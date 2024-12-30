@@ -7,7 +7,7 @@ import ContentFilter from "@/components/ContentFilter";
 const mockContent = [
   {
     id: 1,
-    type: "video",
+    type: "video" as const,
     title: "Introduction to Our Ministry",
     description: "Learn about our vision and mission in this comprehensive overview.",
     thumbnail: "https://picsum.photos/seed/1/800/400",
@@ -16,7 +16,7 @@ const mockContent = [
   },
   {
     id: 2,
-    type: "blog",
+    type: "blog" as const,
     title: "Weekly Devotional: Finding Peace in Chaos",
     description: "A reflection on finding inner peace during challenging times.",
     thumbnail: "https://picsum.photos/seed/2/800/400",
@@ -25,14 +25,13 @@ const mockContent = [
   },
   {
     id: 3,
-    type: "podcast",
+    type: "podcast" as const,
     title: "Walking in Faith - Episode 12",
     description: "Join us for an inspiring discussion about walking in faith.",
     thumbnail: "https://picsum.photos/seed/3/800/400",
     date: "2024-03-18",
     source: "Faith Talks",
   },
-  // Add more mock content items here
 ];
 
 const Index = () => {
