@@ -11,12 +11,14 @@ export default function Index() {
   const { data: videos = [], isLoading, error } = useQuery({
     queryKey: ['youtube-videos'],
     queryFn: () => fetchYouTubeVideos(CHANNEL_ID),
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to fetch videos. Please try again later.",
-        variant: "destructive",
-      });
+    meta: {
+      onError: (error: Error) => {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to fetch videos. Please try again later.",
+          variant: "destructive",
+        });
+      }
     }
   });
 
