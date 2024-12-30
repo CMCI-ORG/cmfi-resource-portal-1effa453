@@ -9,6 +9,30 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      app_secrets: {
+        Row: {
+          id: string
+          key_name: string
+          key_value: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          key_name: string
+          key_value: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          key_name?: string
+          key_value?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       activity_logs: {
         Row: {
           action_type: string
@@ -273,8 +297,8 @@ export type Database = {
           next_retry_at?: string | null
           quote_id?: string | null
           retry_count?: number | null
-          sent_at?: string
-          status?: string
+          sent_at: string
+          status: string
           subscriber_id: string
           type: string
           whatsapp_message_id?: string | null
@@ -619,7 +643,7 @@ export type Database = {
           created_at?: string
           date: string
           failed_delivery?: number | null
-          id?: string
+          id: string
           retry_attempts?: number | null
           successful_delivery?: number | null
           total_sent?: number | null
@@ -653,13 +677,13 @@ export type Database = {
           attempts?: number | null
           created_at?: string
           error_message?: string | null
-          id?: string
+          id: string
           max_attempts?: number | null
           next_attempt_at?: string | null
           payload: Json
           priority?: number | null
           processed_at?: string | null
-          status?: string
+          status: string
         }
         Update: {
           attempts?: number | null
@@ -732,7 +756,7 @@ export type Database = {
           created_at?: string
           expires_at?: string
           id?: string
-          token?: string
+          token: string
           used_at?: string | null
           user_id?: string
         }
@@ -756,14 +780,14 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           bio?: string | null
-          created_at?: string
+          created_at: string
           display_name?: string | null
           email_verified?: boolean | null
           id: string
           last_login?: string | null
           preferred_language?: string | null
           role?: string | null
-          updated_at?: string
+          updated_at: string
           username?: string | null
           website?: string | null
         }
@@ -773,11 +797,11 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           email_verified?: boolean | null
-          id?: string
+          id: string
           last_login?: string | null
           preferred_language?: string | null
           role?: string | null
-          updated_at?: string
+          updated_at: string
           username?: string | null
           website?: string | null
         }
@@ -799,7 +823,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
-          quote_id?: string
+          quote_id: string
           user_id?: string | null
         }
         Relationships: [
@@ -828,7 +852,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
-          quote_id?: string
+          quote_id: string
           user_id?: string | null
         }
         Relationships: [
@@ -859,7 +883,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
-          quote_id?: string
+          quote_id: string
           share_type?: string
           user_id?: string | null
         }
@@ -889,7 +913,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
-          quote_id?: string
+          quote_id: string
           user_id?: string | null
         }
         Relationships: [
@@ -1073,7 +1097,7 @@ export type Database = {
           id?: string
           logo_url?: string | null
           primary_language?: string | null
-          site_name?: string
+          site_name: string
           tag_line?: string | null
           translations?: Json | null
           updated_at?: string
@@ -1154,8 +1178,8 @@ export type Database = {
           notify_new_quotes?: boolean | null
           notify_weekly_digest?: boolean | null
           notify_whatsapp?: boolean | null
-          role?: string
-          status?: string
+          role: string
+          status: string
           unsubscribe_token?: string | null
           updated_at?: string
           welcome_email_sent?: boolean | null
@@ -1207,7 +1231,7 @@ export type Database = {
           country?: string | null
           created_at?: string
           device_type?: string | null
-          id?: string
+          id: string
           language?: string | null
           latitude?: number | null
           longitude?: number | null
@@ -1269,9 +1293,9 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
-          language?: string
+          language: string
           name: string
-          status?: string
+          status: string
           updated_at?: string
         }
         Update: {
@@ -1337,100 +1361,3 @@ export type Database = {
     }
   }
 }
-
-type PublicSchema = Database[Extract<keyof Database, "public">]
-
-export type Tables<
-  PublicTableNameOrOptions extends
-    | keyof (PublicSchema["Tables"] & PublicSchema["Views"])
-    | { schema: keyof Database },
-  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
-        Database[PublicTableNameOrOptions["schema"]]["Views"])
-    : never = never,
-> = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
-      Database[PublicTableNameOrOptions["schema"]]["Views"])[TableName] extends {
-      Row: infer R
-    }
-    ? R
-    : never
-  : PublicTableNameOrOptions extends keyof (PublicSchema["Tables"] &
-        PublicSchema["Views"])
-    ? (PublicSchema["Tables"] &
-        PublicSchema["Views"])[PublicTableNameOrOptions] extends {
-        Row: infer R
-      }
-      ? R
-      : never
-    : never
-
-export type TablesInsert<
-  PublicTableNameOrOptions extends
-    | keyof PublicSchema["Tables"]
-    | { schema: keyof Database },
-  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
-> = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Insert: infer I
-    }
-    ? I
-    : never
-  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
-    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
-        Insert: infer I
-      }
-      ? I
-      : never
-    : never
-
-export type TablesUpdate<
-  PublicTableNameOrOptions extends
-    | keyof PublicSchema["Tables"]
-    | { schema: keyof Database },
-  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
-> = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Update: infer U
-    }
-    ? U
-    : never
-  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
-    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
-        Update: infer U
-      }
-      ? U
-      : never
-    : never
-
-export type Enums<
-  PublicEnumNameOrOptions extends
-    | keyof PublicSchema["Enums"]
-    | { schema: keyof Database },
-  EnumName extends PublicEnumNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
-> = PublicEnumNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicEnumNameOrOptions["schema"]]["Enums"][EnumName]
-  : PublicEnumNameOrOptions extends keyof PublicSchema["Enums"]
-    ? PublicSchema["Enums"][PublicEnumNameOrOptions]
-    : never
-
-export type CompositeTypes<
-  PublicCompositeTypeNameOrOptions extends
-    | keyof PublicSchema["CompositeTypes"]
-    | { schema: keyof Database },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof Database
-  }
-    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
-> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof PublicSchema["CompositeTypes"]
-    ? PublicSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-    : never

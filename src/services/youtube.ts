@@ -17,19 +17,12 @@ interface YouTubeVideo {
 
 export const fetchYouTubeVideos = async (channelId: string, maxResults = 10) => {
   try {
-    // First, try to get the API key from Supabase
-    const { data: secrets, error } = await supabase
-      .from('secrets')
-      .select('value')
-      .eq('name', 'YOUTUBE_API_KEY')
-      .single();
-
-    if (error) {
-      console.error('Error fetching YouTube API key:', error);
+    const apiKey = YOUTUBE_API_KEY;
+    
+    if (!apiKey) {
+      console.error('YouTube API key is not configured');
       return [];
     }
-
-    const apiKey = secrets?.value || YOUTUBE_API_KEY;
     
     const response = await fetch(
       `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&maxResults=${maxResults}&order=date&type=video&key=${apiKey}`
