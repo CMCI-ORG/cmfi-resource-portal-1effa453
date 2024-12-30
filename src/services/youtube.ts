@@ -1,7 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
 
-const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY || '';
-
 interface YouTubeVideo {
   id: { videoId: string };
   snippet: {
@@ -17,7 +15,19 @@ interface YouTubeVideo {
 
 export const fetchYouTubeVideos = async (channelId: string, maxResults = 10) => {
   try {
-    const apiKey = YOUTUBE_API_KEY;
+    // Fetch API key from Supabase
+    const { data: secretData, error: secretError } = await supabase
+      .from('app_secrets')
+      .select('key_value')
+      .eq('key_name', 'YOUTUBE_API_KEY')
+      .single();
+
+    if (secretError || !secretData) {
+      console.error('Error fetching YouTube API key:', secretError);
+      return [];
+    }
+
+    const apiKey = secretData.key_value;
     
     if (!apiKey) {
       console.error('YouTube API key is not configured');
