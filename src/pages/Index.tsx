@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchYouTubeVideos } from "@/services/youtube";
 import ContentCard from "@/components/ContentCard";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 const CHANNEL_ID = "YOUR_CHANNEL_ID"; // Replace with your YouTube channel ID
 
@@ -11,18 +11,17 @@ export default function Index() {
   const { data: videos = [], isLoading, error } = useQuery({
     queryKey: ['youtube-videos'],
     queryFn: () => fetchYouTubeVideos(CHANNEL_ID),
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to fetch videos. Please try again later.",
+        variant: "destructive",
+      });
+    }
   });
 
   if (isLoading) {
     return <div>Loading...</div>;
-  }
-
-  if (error) {
-    toast({
-      title: "Error",
-      description: "Failed to fetch videos. Please try again later.",
-      variant: "destructive",
-    });
   }
 
   return (

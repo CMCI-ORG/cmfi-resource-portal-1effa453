@@ -15,23 +15,25 @@ interface YouTubeVideo {
 
 export const fetchYouTubeVideos = async (channelId: string, maxResults = 10) => {
   try {
-    // Fetch API key from Supabase
+    // Fetch API key from Supabase with better error handling
     const { data: secretData, error: secretError } = await supabase
       .from('app_secrets')
       .select('key_value')
       .eq('key_name', 'YOUTUBE_API_KEY')
       .single();
 
-    if (secretError || !secretData) {
+    if (secretError) {
       console.error('Error fetching YouTube API key:', secretError);
-      return [];
+      if (secretError.message.includes('does not exist')) {
+        throw new Error('YouTube API key not configured. Please set up the app_secrets table and add your API key.');
+      }
+      throw new Error('Failed to fetch YouTube API key');
     }
 
-    const apiKey = secretData.key_value;
+    const apiKey = secretData?.key_value;
     
     if (!apiKey) {
-      console.error('YouTube API key is not configured');
-      return [];
+      throw new Error('YouTube API key not found');
     }
     
     const response = await fetch(
@@ -54,6 +56,6 @@ export const fetchYouTubeVideos = async (channelId: string, maxResults = 10) => 
     }));
   } catch (error) {
     console.error('Error fetching YouTube videos:', error);
-    return [];
+    throw error;
   }
 };
