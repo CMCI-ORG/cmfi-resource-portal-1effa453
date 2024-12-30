@@ -30,18 +30,19 @@ export const fetchYouTubeVideos = async (channelId: string, maxResults = 10) => 
       throw new Error('Failed to fetch YouTube API key');
     }
 
-    const apiKey = secretData?.key_value;
-    
-    if (!apiKey) {
-      throw new Error('YouTube API key not found');
+    if (!secretData?.key_value) {
+      throw new Error('YouTube API key not found. Please add it to app_secrets.');
     }
+
+    const apiKey = secretData.key_value;
     
     const response = await fetch(
       `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&maxResults=${maxResults}&order=date&type=video&key=${apiKey}`
     );
 
     if (!response.ok) {
-      throw new Error('YouTube API request failed');
+      const errorData = await response.json();
+      throw new Error(errorData.error?.message || 'YouTube API request failed');
     }
 
     const data = await response.json();
