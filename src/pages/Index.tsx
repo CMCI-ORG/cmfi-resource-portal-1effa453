@@ -1,44 +1,35 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import ContentCard from "@/components/ContentCard";
 import SearchBar from "@/components/SearchBar";
 import ContentFilter from "@/components/ContentFilter";
+import { fetchYouTubeVideos } from "@/services/youtube";
+import { useToast } from "@/components/ui/use-toast";
 
-// Mock data for initial development
-const mockContent = [
-  {
-    id: 1,
-    type: "video" as const,
-    title: "Introduction to Our Ministry",
-    description: "Learn about our vision and mission in this comprehensive overview.",
-    thumbnail: "https://picsum.photos/seed/1/800/400",
-    date: "2024-03-20",
-    source: "Main Channel",
-  },
-  {
-    id: 2,
-    type: "blog" as const,
-    title: "Weekly Devotional: Finding Peace in Chaos",
-    description: "A reflection on finding inner peace during challenging times.",
-    thumbnail: "https://picsum.photos/seed/2/800/400",
-    date: "2024-03-19",
-    source: "Ministry Blog",
-  },
-  {
-    id: 3,
-    type: "podcast" as const,
-    title: "Walking in Faith - Episode 12",
-    description: "Join us for an inspiring discussion about walking in faith.",
-    thumbnail: "https://picsum.photos/seed/3/800/400",
-    date: "2024-03-18",
-    source: "Faith Talks",
-  },
-];
+// Example channel ID - replace with your actual channel ID
+const CHANNEL_ID = "UC_x5XG1OV2P6uZZ5FSM9Ttw"; // Google Developers channel
 
 const Index = () => {
   const [activeFilter, setActiveFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const { toast } = useToast();
 
-  const filteredContent = mockContent.filter((item) => {
+  const { data: videos = [], isLoading, error } = useQuery({
+    queryKey: ['youtube-videos', CHANNEL_ID],
+    queryFn: () => fetchYouTubeVideos(CHANNEL_ID),
+  });
+
+  useEffect(() => {
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch videos. Please try again later.",
+        variant: "destructive",
+      });
+    }
+  }, [error, toast]);
+
+  const filteredContent = videos.filter((item) => {
     const matchesFilter = activeFilter === "all" || item.type === activeFilter;
     const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          item.description.toLowerCase().includes(searchQuery.toLowerCase());
@@ -61,9 +52,20 @@ const Index = () => {
         </section>
 
         <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredContent.map((content) => (
-            <ContentCard key={content.id} {...content} />
-          ))}
+          {isLoading ? (
+            <div className="col-span-full text-center py-12">
+              <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
+              <p className="mt-4 text-gray-600">Loading videos...</p>
+            </div>
+          ) : filteredContent.length > 0 ? (
+            filteredContent.map((content) => (
+              <ContentCard key={content.id} {...content} />
+            ))
+          ) : (
+            <div className="col-span-full text-center py-12">
+              <p className="text-gray-600">No content found matching your criteria.</p>
+            </div>
+          )}
         </section>
       </div>
     </div>
