@@ -1,12 +1,15 @@
 import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
-import { supabase } from "@/integrations/supabase/client"
-
-interface FeedState {
-  name: string
-  url: string
-  displaySummary: boolean
-}
+import type { FeedState } from "./wordpress/types"
+import { validateFeeds } from "./wordpress/validation"
+import { 
+  createContentSource,
+  checkRateLimit,
+  parseFeed,
+  insertContent,
+  fetchExistingSources as fetchSources,
+  deleteSource
+} from "./wordpress/feedManagement"
 
 export function useWordPressFeedParser() {
   const [feeds, setFeeds] = useState<FeedState[]>([{ name: "", url: "", displaySummary: true }])
@@ -17,41 +20,13 @@ export function useWordPressFeedParser() {
   const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
 
-  // Fetch existing sources on mount
   useEffect(() => {
     fetchExistingSources()
   }, [])
 
   const fetchExistingSources = async () => {
-    const { data, error } = await supabase
-      .from("content_sources")
-      .select("*")
-      .eq("type", "wordpress")
-      .order("created_at", { ascending: false })
-
-    if (error) {
-      console.error("Error fetching sources:", error)
-      return
-    }
-
-    setExistingSources(data || [])
-  }
-
-  const validateFeedUrl = (url: string): boolean => {
-    try {
-      new URL(url)
-      return url.startsWith('http') || url.startsWith('https')
-    } catch {
-      return false
-    }
-  }
-
-  const validateFeedName = (name: string): boolean => {
-    return name.trim().length >= 3 && name.trim().length <= 50
-  }
-
-  const isDuplicateFeed = (url: string): boolean => {
-    return existingSources.some(source => source.feed_url === url)
+    const sources = await fetchSources()
+    setExistingSources(sources)
   }
 
   const resetState = () => {
@@ -81,26 +56,11 @@ export function useWordPressFeedParser() {
     setFeeds(newFeeds)
   }
 
-  const validateFeeds = (): string | null => {
-    for (const feed of feeds) {
-      if (!validateFeedName(feed.name)) {
-        return "Feed names must be between 3 and 50 characters"
-      }
-      if (!validateFeedUrl(feed.url)) {
-        return "Please enter valid feed URLs (must start with http:// or https://)"
-      }
-      if (isDuplicateFeed(feed.url)) {
-        return "One or more feeds have already been imported"
-      }
-    }
-    return null
-  }
-
   const parseFeeds = async () => {
     setError(null)
     
     // Client-side validation
-    const validationError = validateFeeds()
+    const validationError = validateFeeds(feeds, existingSources)
     if (validationError) {
       toast({
         title: "Validation Error",
@@ -131,73 +91,16 @@ export function useWordPressFeedParser() {
         setStatus(`Processing feed ${i + 1} of ${feeds.length}...`)
 
         // Create content source
-        const { data: sourceData, error: sourceError } = await supabase
-          .from("content_sources")
-          .insert({
-            type: "wordpress",
-            name: feed.name,
-            source_url: feed.url,
-            source_id: feed.url,
-            feed_url: feed.url,
-            display_summary: feed.displaySummary,
-            last_import_attempt: new Date().toISOString()
-          })
-          .select()
-          .maybeSingle()
-
-        if (sourceError) {
-          console.error("Source insertion error:", sourceError)
-          throw new Error(`Failed to add content source: ${sourceError.message}`)
-        }
-
-        if (!sourceData) {
-          throw new Error("Failed to create content source")
-        }
+        const sourceData = await createContentSource(feed.name, feed.url, feed.displaySummary)
 
         // Check rate limit
-        const { data: isAllowed, error: rateLimitError } = await supabase
-          .rpc('check_import_rate_limit', { source_id: sourceData.id })
-
-        if (rateLimitError) throw new Error("Failed to check rate limit: " + rateLimitError.message)
-        if (!isAllowed) {
-          throw new Error("Rate limit exceeded. Please wait 15 minutes between imports.")
-        }
+        await checkRateLimit(sourceData.id)
 
         // Parse feed
-        const { data: feedData, error: feedError } = await supabase.functions.invoke(
-          "parse-wordpress-feed",
-          {
-            body: { 
-              url: feed.url,
-              sourceId: sourceData.id,
-              displaySummary: feed.displaySummary 
-            }
-          }
-        )
+        const items = await parseFeed(feed.url, sourceData.id, feed.displaySummary)
 
-        if (feedError) throw feedError
-        if (!feedData?.items) throw new Error("No articles found in feed")
-
-        // Insert content with duplicate handling
-        const { error: insertError } = await supabase.from("content").insert(
-          feedData.items.map((item: any) => ({
-            type: "blog",
-            title: item.title,
-            description: item.description,
-            content_url: item.link,
-            thumbnail_url: item.thumbnail,
-            source: feed.name,
-            published_at: item.pubDate,
-            external_id: item.guid,
-            metadata: {
-              categories: item.categories,
-              tags: item.tags,
-              author: item.author,
-            },
-          }))
-        ).onConflict(['external_id', 'source']).ignore()
-
-        if (insertError) throw insertError
+        // Insert content
+        await insertContent(items, feed.name)
       }
 
       setProgress(100)
@@ -222,12 +125,7 @@ export function useWordPressFeedParser() {
 
   const deleteFeedSource = async (sourceId: string) => {
     try {
-      const { error } = await supabase
-        .from("content_sources")
-        .delete()
-        .eq("id", sourceId)
-
-      if (error) throw error
+      await deleteSource(sourceId)
 
       toast({
         title: "Success",
