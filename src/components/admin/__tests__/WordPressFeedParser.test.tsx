@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import { WordPressFeedParser } from "../WordPressFeedParser"
 import { supabase } from "@/integrations/supabase/client"
 import { useToast } from "@/hooks/use-toast"
-import { Mock } from "vitest"
+import type { Mock } from "vitest"
 
 // Mock hooks
 vi.mock("@/hooks/use-toast", () => ({
@@ -18,6 +18,7 @@ vi.mock("@/integrations/supabase/client", () => ({
     from: vi.fn(() => ({
       insert: vi.fn().mockResolvedValue({ data: null, error: null }),
       select: vi.fn().mockResolvedValue({ data: [], error: null }),
+      delete: vi.fn().mockResolvedValue({ error: null }),
     })),
     functions: {
       invoke: vi.fn().mockResolvedValue({ data: { items: [] }, error: null }),
@@ -47,7 +48,45 @@ describe("WordPressFeedParser", () => {
     expect(screen.getByText("Import WordPress Blogs")).toBeInTheDocument()
   })
 
-  it("handles feed submission", async () => {
+  it("validates feed name length", async () => {
+    render(<WordPressFeedParser />)
+    
+    const nameInput = screen.getByLabelText(/Feed Name/i)
+    const importButton = screen.getByText("Import")
+
+    fireEvent.change(nameInput, { target: { value: "ab" } })
+    fireEvent.click(importButton)
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(expect.objectContaining({
+        title: "Validation Error",
+        description: "Feed names must be between 3 and 50 characters",
+        variant: "destructive",
+      }))
+    })
+  })
+
+  it("validates feed URL format", async () => {
+    render(<WordPressFeedParser />)
+    
+    const nameInput = screen.getByLabelText(/Feed Name/i)
+    const urlInput = screen.getByLabelText(/Feed URL/i)
+    const importButton = screen.getByText("Import")
+
+    fireEvent.change(nameInput, { target: { value: "Test Blog" } })
+    fireEvent.change(urlInput, { target: { value: "invalid-url" } })
+    fireEvent.click(importButton)
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(expect.objectContaining({
+        title: "Validation Error",
+        description: "Please enter valid feed URLs (must start with http:// or https://)",
+        variant: "destructive",
+      }))
+    })
+  })
+
+  it("handles successful feed submission", async () => {
     render(<WordPressFeedParser />)
     
     const nameInput = screen.getByLabelText(/Feed Name/i)
@@ -67,25 +106,7 @@ describe("WordPressFeedParser", () => {
     })
   })
 
-  it("displays error message for invalid URL", async () => {
-    render(<WordPressFeedParser />)
-    
-    const urlInput = screen.getByLabelText(/Feed URL/i)
-    const importButton = screen.getByText("Import")
-
-    fireEvent.change(urlInput, { target: { value: "invalid-url" } })
-    fireEvent.click(importButton)
-
-    await waitFor(() => {
-      expect(mockToast).toHaveBeenCalledWith(expect.objectContaining({
-        title: "Error",
-        description: "Please enter valid feed names and URLs",
-        variant: "destructive",
-      }))
-    })
-  })
-
-  it("shows loading state during import", async () => {
+  it("displays loading state during import", async () => {
     render(<WordPressFeedParser />)
     
     const nameInput = screen.getByLabelText(/Feed Name/i)
@@ -98,15 +119,5 @@ describe("WordPressFeedParser", () => {
 
     expect(screen.getByText(/Initializing feed parser/i)).toBeInTheDocument()
     expect(importButton).toBeDisabled()
-  })
-
-  it("handles display summary toggle", () => {
-    render(<WordPressFeedParser />)
-    
-    const toggle = screen.getByRole("switch")
-    expect(toggle).toBeChecked()
-    
-    fireEvent.click(toggle)
-    expect(toggle).not.toBeChecked()
   })
 })

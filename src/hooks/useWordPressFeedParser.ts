@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { supabase } from "@/integrations/supabase/client"
 
@@ -10,11 +10,32 @@ interface FeedState {
 
 export function useWordPressFeedParser() {
   const [feeds, setFeeds] = useState<FeedState[]>([{ name: "", url: "", displaySummary: true }])
+  const [existingSources, setExistingSources] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [progress, setProgress] = useState(0)
   const [status, setStatus] = useState("")
   const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
+
+  // Fetch existing sources on mount
+  useEffect(() => {
+    fetchExistingSources()
+  }, [])
+
+  const fetchExistingSources = async () => {
+    const { data, error } = await supabase
+      .from("content_sources")
+      .select("*")
+      .eq("type", "wordpress")
+      .order("created_at", { ascending: false })
+
+    if (error) {
+      console.error("Error fetching sources:", error)
+      return
+    }
+
+    setExistingSources(data || [])
+  }
 
   const validateFeedUrl = (url: string): boolean => {
     try {
@@ -26,7 +47,11 @@ export function useWordPressFeedParser() {
   }
 
   const validateFeedName = (name: string): boolean => {
-    return name.length > 0
+    return name.trim().length >= 3 && name.trim().length <= 50
+  }
+
+  const isDuplicateFeed = (url: string): boolean => {
+    return existingSources.some(source => source.feed_url === url)
   }
 
   const resetState = () => {
@@ -56,13 +81,30 @@ export function useWordPressFeedParser() {
     setFeeds(newFeeds)
   }
 
+  const validateFeeds = (): string | null => {
+    for (const feed of feeds) {
+      if (!validateFeedName(feed.name)) {
+        return "Feed names must be between 3 and 50 characters"
+      }
+      if (!validateFeedUrl(feed.url)) {
+        return "Please enter valid feed URLs (must start with http:// or https://)"
+      }
+      if (isDuplicateFeed(feed.url)) {
+        return "One or more feeds have already been imported"
+      }
+    }
+    return null
+  }
+
   const parseFeeds = async () => {
     setError(null)
-    const invalidFeeds = feeds.filter(feed => !validateFeedUrl(feed.url) || !validateFeedName(feed.name))
-    if (invalidFeeds.length > 0) {
+    
+    // Client-side validation
+    const validationError = validateFeeds()
+    if (validationError) {
       toast({
-        title: "Error",
-        description: "Please enter valid feed names and URLs",
+        title: "Validation Error",
+        description: validationError,
         variant: "destructive",
       })
       return
@@ -88,15 +130,17 @@ export function useWordPressFeedParser() {
         setProgress((i + 1) * (90 / feeds.length))
         setStatus(`Processing feed ${i + 1} of ${feeds.length}...`)
 
+        // Create content source
         const { data: sourceData, error: sourceError } = await supabase
           .from("content_sources")
           .insert({
-            type: "wordpress",  // Changed from "blog" to "wordpress"
+            type: "wordpress",
             name: feed.name,
             source_url: feed.url,
             source_id: feed.url,
             feed_url: feed.url,
             display_summary: feed.displaySummary,
+            last_import_attempt: new Date().toISOString()
           })
           .select()
           .maybeSingle()
@@ -110,6 +154,16 @@ export function useWordPressFeedParser() {
           throw new Error("Failed to create content source")
         }
 
+        // Check rate limit
+        const { data: isAllowed, error: rateLimitError } = await supabase
+          .rpc('check_import_rate_limit', { source_id: sourceData.id })
+
+        if (rateLimitError) throw new Error("Failed to check rate limit: " + rateLimitError.message)
+        if (!isAllowed) {
+          throw new Error("Rate limit exceeded. Please wait 15 minutes between imports.")
+        }
+
+        // Parse feed
         const { data: feedData, error: feedError } = await supabase.functions.invoke(
           "parse-wordpress-feed",
           {
@@ -124,9 +178,10 @@ export function useWordPressFeedParser() {
         if (feedError) throw feedError
         if (!feedData?.items) throw new Error("No articles found in feed")
 
+        // Insert content with duplicate handling
         const { error: insertError } = await supabase.from("content").insert(
           feedData.items.map((item: any) => ({
-            type: "blog",  // This remains "blog" as it's an enum in the content table
+            type: "blog",
             title: item.title,
             description: item.description,
             content_url: item.link,
@@ -140,7 +195,7 @@ export function useWordPressFeedParser() {
               author: item.author,
             },
           }))
-        )
+        ).onConflict(['external_id', 'source']).ignore()
 
         if (insertError) throw insertError
       }
@@ -153,6 +208,8 @@ export function useWordPressFeedParser() {
         description: "WordPress feeds parsed and articles imported successfully",
       })
 
+      // Refresh existing sources
+      await fetchExistingSources()
       setFeeds([{ name: "", url: "", displaySummary: true }])
     } catch (error) {
       handleError(error)
@@ -163,8 +220,33 @@ export function useWordPressFeedParser() {
     }
   }
 
+  const deleteFeedSource = async (sourceId: string) => {
+    try {
+      const { error } = await supabase
+        .from("content_sources")
+        .delete()
+        .eq("id", sourceId)
+
+      if (error) throw error
+
+      toast({
+        title: "Success",
+        description: "Feed source deleted successfully",
+      })
+
+      await fetchExistingSources()
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete feed source",
+        variant: "destructive",
+      })
+    }
+  }
+
   return {
     feeds,
+    existingSources,
     isLoading,
     progress,
     status,
@@ -172,6 +254,7 @@ export function useWordPressFeedParser() {
     addFeed,
     removeFeed,
     updateFeed,
-    parseFeeds
+    parseFeeds,
+    deleteFeedSource
   }
 }

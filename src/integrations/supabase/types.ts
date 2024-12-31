@@ -78,6 +78,7 @@ export type Database = {
           display_summary: boolean | null
           feed_url: string | null
           id: string
+          last_import_attempt: string | null
           last_synced_at: string | null
           location: string | null
           metadata: Json | null
@@ -91,6 +92,7 @@ export type Database = {
           display_summary?: boolean | null
           feed_url?: string | null
           id?: string
+          last_import_attempt?: string | null
           last_synced_at?: string | null
           location?: string | null
           metadata?: Json | null
@@ -104,6 +106,7 @@ export type Database = {
           display_summary?: boolean | null
           feed_url?: string | null
           id?: string
+          last_import_attempt?: string | null
           last_synced_at?: string | null
           location?: string | null
           metadata?: Json | null
@@ -146,6 +149,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_import_rate_limit: {
+        Args: {
+          source_id: string
+        }
+        Returns: boolean
+      }
       is_admin: {
         Args: {
           user_id: string
