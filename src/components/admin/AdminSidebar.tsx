@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom"
 import {
   Sidebar,
   SidebarContent,
@@ -55,19 +56,19 @@ export function AdminSidebar() {
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
-                  <a href="/" className="flex items-center">
+                  <Link to="/" className="flex items-center">
                     <Home className="mr-2" />
                     <span>Back to Site</span>
-                  </a>
+                  </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                    <a href={item.url} className="flex items-center">
+                    <Link to={item.url} className="flex items-center">
                       <item.icon className="mr-2" />
                       <span>{item.title}</span>
-                    </a>
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
