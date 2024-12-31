@@ -1,8 +1,7 @@
 import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { TableCell, TableRow } from "@/components/ui/table"
-import { Trash, Edit, RefreshCw, X, Check } from "lucide-react"
+import { YouTubeChannelActions } from "./YouTubeChannelActions"
+import { YouTubeChannelEditForm } from "./YouTubeChannelEditForm"
 
 interface Channel {
   id: string
@@ -45,43 +44,15 @@ export function YouTubeChannelItem({
 
   if (isEditing) {
     return (
-      <TableRow>
-        <TableCell>
-          <Input
-            value={editedName}
-            onChange={(e) => setEditedName(e.target.value)}
-            placeholder="Channel name"
-          />
-        </TableCell>
-        <TableCell>
-          <Input
-            value={editedSourceId}
-            onChange={(e) => setEditedSourceId(e.target.value)}
-            placeholder="Channel ID or @handle"
-          />
-        </TableCell>
-        <TableCell>
-          {channel.last_synced_at
-            ? new Date(channel.last_synced_at).toLocaleString()
-            : "Never"}
-        </TableCell>
-        <TableCell className="text-right space-x-2">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={handleSave}
-          >
-            <Check className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={onCancelEdit}
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </TableCell>
-      </TableRow>
+      <YouTubeChannelEditForm
+        name={editedName}
+        sourceId={editedSourceId}
+        lastSyncedAt={channel.last_synced_at}
+        onNameChange={setEditedName}
+        onSourceIdChange={setEditedSourceId}
+        onSave={handleSave}
+        onCancel={onCancelEdit}
+      />
     )
   }
 
@@ -94,29 +65,13 @@ export function YouTubeChannelItem({
           ? new Date(channel.last_synced_at).toLocaleString()
           : "Never"}
       </TableCell>
-      <TableCell className="text-right space-x-2">
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={() => onSync(channel)}
-          disabled={isSyncing}
-        >
-          <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
-        </Button>
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={onStartEdit}
-        >
-          <Edit className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="destructive"
-          size="icon"
-          onClick={() => onDelete(channel.id)}
-        >
-          <Trash className="h-4 w-4" />
-        </Button>
+      <TableCell className="text-right">
+        <YouTubeChannelActions
+          onSync={() => onSync(channel)}
+          onStartEdit={onStartEdit}
+          onDelete={() => onDelete(channel.id)}
+          isSyncing={isSyncing}
+        />
       </TableCell>
     </TableRow>
   )

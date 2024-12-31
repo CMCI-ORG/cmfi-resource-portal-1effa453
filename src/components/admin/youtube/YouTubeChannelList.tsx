@@ -85,33 +85,12 @@ export function YouTubeChannelList({ onRefresh }: { onRefresh?: () => void }) {
 
   async function handleDelete(id: string) {
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
-        toast({
-          title: "Authentication required",
-          description: "Please log in to delete YouTube channels.",
-          variant: "destructive",
-        })
-        navigate("/login")
-        return
-      }
-
       const { error } = await supabase
         .from("content_sources")
         .delete()
         .eq("id", id)
 
-      if (error) {
-        if (error.code === "42501") {
-          toast({
-            title: "Permission denied",
-            description: "You don't have permission to delete YouTube channels.",
-            variant: "destructive",
-          })
-          return
-        }
-        throw error
-      }
+      if (error) throw error
 
       setChannels((prev) => prev.filter((channel) => channel.id !== id))
       toast({
@@ -134,7 +113,6 @@ export function YouTubeChannelList({ onRefresh }: { onRefresh?: () => void }) {
       setIsSyncing(channel.id)
       await fetchYouTubeVideos(channel.source_id)
       
-      // Update last_synced_at
       const { error } = await supabase
         .from("content_sources")
         .update({ last_synced_at: new Date().toISOString() })
@@ -147,8 +125,8 @@ export function YouTubeChannelList({ onRefresh }: { onRefresh?: () => void }) {
         description: "Videos have been updated successfully.",
       })
       
-      fetchChannels() // Refresh the list to show updated last_synced_at
-      if (onRefresh) onRefresh() // Refresh the videos list
+      fetchChannels()
+      if (onRefresh) onRefresh()
     } catch (error) {
       console.error("Error syncing videos:", error)
       toast({
