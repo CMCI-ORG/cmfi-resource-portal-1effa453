@@ -13,65 +13,36 @@ interface YouTubeVideo {
   };
 }
 
+async function getYouTubeApiKey() {
+  const { data, error } = await supabase
+    .from("app_secrets")
+    .select("key_value")
+    .eq("key_name", "YOUTUBE_API_KEY")
+    .maybeSingle();
+
+  if (error) {
+    console.error("Error fetching API key:", error);
+    throw new Error("Failed to fetch YouTube API key");
+  }
+
+  if (!data?.key_value) {
+    throw new Error("YouTube API key not found. Please add it in the YouTube settings.");
+  }
+
+  return data.key_value;
+}
+
 export const fetchYouTubeVideos = async (channelId: string, maxResults = 10) => {
   try {
     console.log('Fetching videos for channel:', channelId);
     
-    // Validate channelId
     if (!channelId) {
       throw new Error('Channel ID is required');
     }
 
-    // First, let's check if we have any API keys in the table
-    const { data: allSecrets, error: listError } = await supabase
-      .from('app_secrets')
-      .select('*');
-
-    if (listError) {
-      console.error('Error listing secrets:', listError);
-      throw new Error('Failed to check secrets table');
-    }
-
-    console.log('Total secrets in table:', allSecrets.length);
-    console.log('Available secret keys:', allSecrets.map(s => s.key_name).join(', '));
-
-    // Now fetch the YouTube API key specifically
-    const { data: secretData, error: secretError } = await supabase
-      .from('app_secrets')
-      .select('*')
-      .eq('key_name', 'YOUTUBE_API_KEY')
-      .maybeSingle();  // Changed from .single() to .maybeSingle()
-
-    if (secretError) {
-      console.error('Error fetching API key:', secretError);
-      throw new Error('Failed to fetch YouTube API key from database');
-    }
-
-    if (!secretData) {
-      console.error('No YouTube API key found in database');
-      throw new Error('YouTube API key not found. Please add it in the Supabase settings.');
-    }
-
-    console.log('API key record found:', {
-      id: secretData.id,
-      key_name: secretData.key_name,
-      key_length: secretData.key_value?.length || 0,
-      created_at: secretData.created_at
-    });
-
-    const apiKey = secretData.key_value?.trim();
-    if (!apiKey) {
-      console.error('API key is empty or contains only whitespace');
-      throw new Error('YouTube API key is empty. Please provide a valid API key.');
-    }
-
-    // Test if the API key format looks valid (basic check)
-    if (apiKey.length < 20) {
-      console.error('API key seems too short to be valid');
-      throw new Error('YouTube API key appears invalid. Please check the key format.');
-    }
-
-    console.log('API key validation passed. Length:', apiKey.length);
+    const apiKey = await getYouTubeApiKey();
+    
+    console.log('API key retrieved successfully');
     
     // Fetch videos from YouTube
     const youtubeUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&maxResults=${maxResults}&order=date&type=video&key=${apiKey}`;
@@ -108,7 +79,6 @@ export const fetchYouTubeVideos = async (channelId: string, maxResults = 10) => 
 
     console.log(`Storing ${videos.length} videos in database...`);
 
-    // Store videos with better error handling
     const { error: insertError } = await supabase
       .from('content')
       .upsert(videos, { 
@@ -125,7 +95,6 @@ export const fetchYouTubeVideos = async (channelId: string, maxResults = 10) => 
     return videos;
   } catch (error) {
     console.error('Error in fetchYouTubeVideos:', error);
-    // Re-throw the error with a more specific message
     if (error instanceof Error) {
       throw error;
     }
