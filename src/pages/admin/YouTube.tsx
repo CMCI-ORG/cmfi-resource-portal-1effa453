@@ -3,7 +3,7 @@ import { AdminSidebar } from "@/components/admin/AdminSidebar"
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { YouTubeChannelForm } from "@/components/admin/youtube/YouTubeChannelForm"
 import { YouTubeChannelList } from "@/components/admin/youtube/YouTubeChannelList"
-import { ContentCard } from "@/components/ContentCard"
+import ContentCard from "@/components/ContentCard"
 import { supabase } from "@/integrations/supabase/client"
 
 interface Video {
