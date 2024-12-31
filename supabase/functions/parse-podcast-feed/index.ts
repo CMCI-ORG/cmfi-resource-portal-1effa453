@@ -23,33 +23,64 @@ serve(async (req) => {
     }
 
     console.log("Fetching podcast feed from:", url)
-    const response = await fetch(url)
-    const xmlText = await response.text()
     
-    // Parse XML using deno-xml parser
-    const doc = parse(xmlText)
-    const channel = doc.rss?.channel
+    // Add timeout to fetch request
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 15000) // 15 second timeout
     
-    if (!channel || !Array.isArray(channel.item)) {
-      throw new Error("Invalid RSS feed format")
+    try {
+      const response = await fetch(url, { 
+        signal: controller.signal,
+        headers: {
+          'Accept': 'application/xml, text/xml, */*',
+          'User-Agent': 'Podcast-Feed-Parser/1.0'
+        }
+      })
+      
+      clearTimeout(timeout)
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch feed: ${response.status} ${response.statusText}`)
+      }
+      
+      const xmlText = await response.text()
+      
+      // Basic XML validation before parsing
+      if (!xmlText.includes('<rss') && !xmlText.includes('<feed')) {
+        throw new Error("Invalid feed format: Not a valid RSS/XML feed")
+      }
+      
+      // Parse XML using deno-xml parser
+      const doc = parse(xmlText)
+      const channel = doc.rss?.channel
+      
+      if (!channel || !Array.isArray(channel.item)) {
+        throw new Error("Invalid RSS feed format: Missing channel or items")
+      }
+
+      // Process only the first 50 items to prevent resource exhaustion
+      const items = channel.item.slice(0, 50).map((item: any) => ({
+        title: item.title?.[0] || "",
+        description: item.description?.[0] || "",
+        url: item.enclosure?.[0]?.["@url"] || "",
+        guid: item.guid?.[0] || "",
+        pubDate: new Date(item.pubDate?.[0] || "").toISOString(),
+        duration: item["itunes:duration"]?.[0] || "",
+        author: item["itunes:author"]?.[0] || "",
+        thumbnail: item["itunes:image"]?.[0]?.["@href"] || channel["itunes:image"]?.[0]?.["@href"] || "",
+      }))
+
+      console.log(`Successfully parsed ${items.length} episodes`)
+      return new Response(
+        JSON.stringify({ items }), 
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        throw new Error('Feed fetch timeout: Request took too long')
+      }
+      throw error
     }
-
-    const items = channel.item.map((item: any) => ({
-      title: item.title?.[0] || "",
-      description: item.description?.[0] || "",
-      url: item.enclosure?.[0]?.["@url"] || "",
-      guid: item.guid?.[0] || "",
-      pubDate: new Date(item.pubDate?.[0] || "").toISOString(),
-      duration: item["itunes:duration"]?.[0] || "",
-      author: item["itunes:author"]?.[0] || "",
-      thumbnail: item["itunes:image"]?.[0]?.["@href"] || channel["itunes:image"]?.[0]?.["@href"] || "",
-    }))
-
-    console.log(`Successfully parsed ${items.length} episodes`)
-    return new Response(
-      JSON.stringify({ items }), 
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
   } catch (error) {
     console.error("Error parsing feed:", error)
     return new Response(
