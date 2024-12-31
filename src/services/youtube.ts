@@ -22,41 +22,32 @@ export const fetchYouTubeVideos = async (channelId: string, maxResults = 10) => 
       throw new Error('Channel ID is required');
     }
 
-    // First, let's check if we have any API keys in the table
-    const { count, error: countError } = await supabase
-      .from('app_secrets')
-      .select('*', { count: 'exact', head: true })
-      .eq('key_name', 'YOUTUBE_API_KEY');
-
-    console.log('Number of YouTube API keys found:', count);
-    
-    if (countError) {
-      console.error('Error checking API keys:', countError);
-      throw new Error('Failed to check for YouTube API key');
-    }
-
-    // Now fetch the actual API key
-    console.log('Fetching YouTube API key from app_secrets...');
+    // First, verify the API key exists and is valid
     const { data: secretData, error: secretError } = await supabase
       .from('app_secrets')
-      .select('key_value')
+      .select('*')
       .eq('key_name', 'YOUTUBE_API_KEY')
-      .maybeSingle();
+      .single();
 
     if (secretError) {
-      console.error('Error fetching YouTube API key:', secretError);
-      throw new Error('Failed to fetch YouTube API key');
+      console.error('Error fetching API key:', secretError);
+      throw new Error('Failed to fetch YouTube API key from database');
     }
 
-    if (!secretData?.key_value) {
-      console.error('YouTube API key not found in app_secrets');
+    if (!secretData || !secretData.key_value) {
+      console.error('No API key found in database');
       throw new Error('YouTube API key not found. Please add it in the Supabase settings.');
     }
 
-    const apiKey = secretData.key_value;
-    console.log('API key retrieved successfully, length:', apiKey.length);
+    const apiKey = secretData.key_value.trim();
+    if (!apiKey) {
+      console.error('API key is empty');
+      throw new Error('YouTube API key is empty. Please provide a valid API key.');
+    }
+
+    console.log('API key retrieved successfully (length:', apiKey.length, ')');
     
-    // Fetch videos from YouTube with error handling
+    // Fetch videos from YouTube
     const youtubeUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&maxResults=${maxResults}&order=date&type=video&key=${apiKey}`;
     
     console.log('Making request to YouTube API...');
@@ -76,7 +67,7 @@ export const fetchYouTubeVideos = async (channelId: string, maxResults = 10) => 
       return [];
     }
 
-    // Transform and store videos in Supabase
+    // Transform and store videos
     const videos = data.items.map((item: YouTubeVideo) => ({
       type: 'video',
       title: item.snippet.title,
