@@ -30,6 +30,48 @@ export type Database = {
         }
         Relationships: []
       }
+      content: {
+        Row: {
+          content_url: string
+          created_at: string
+          description: string | null
+          external_id: string | null
+          id: string
+          metadata: Json | null
+          published_at: string
+          source: string
+          thumbnail_url: string | null
+          title: string
+          type: Database["public"]["Enums"]["content_type"]
+        }
+        Insert: {
+          content_url: string
+          created_at?: string
+          description?: string | null
+          external_id?: string | null
+          id?: string
+          metadata?: Json | null
+          published_at: string
+          source: string
+          thumbnail_url?: string | null
+          title: string
+          type: Database["public"]["Enums"]["content_type"]
+        }
+        Update: {
+          content_url?: string
+          created_at?: string
+          description?: string | null
+          external_id?: string | null
+          id?: string
+          metadata?: Json | null
+          published_at?: string
+          source?: string
+          thumbnail_url?: string | null
+          title?: string
+          type?: Database["public"]["Enums"]["content_type"]
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -38,7 +80,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      content_type: "video" | "podcast" | "blog"
     }
     CompositeTypes: {
       [_ in never]: never

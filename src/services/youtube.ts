@@ -15,7 +15,7 @@ interface YouTubeVideo {
 
 export const fetchYouTubeVideos = async (channelId: string, maxResults = 10) => {
   try {
-    // Fetch API key from Supabase with better error handling
+    // Fetch API key from Supabase
     const { data: secretData, error: secretError } = await supabase
       .from('app_secrets')
       .select('key_value')
@@ -28,11 +28,12 @@ export const fetchYouTubeVideos = async (channelId: string, maxResults = 10) => 
     }
 
     if (!secretData) {
-      throw new Error('YouTube API key not found. Please add it to app_secrets.');
+      throw new Error('YouTube API key not found');
     }
 
     const apiKey = secretData.key_value;
     
+    // Fetch videos from YouTube
     const response = await fetch(
       `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&maxResults=${maxResults}&order=date&type=video&key=${apiKey}`
     );
@@ -43,17 +44,35 @@ export const fetchYouTubeVideos = async (channelId: string, maxResults = 10) => 
     }
 
     const data = await response.json();
-    return data.items.map((item: YouTubeVideo) => ({
-      id: item.id.videoId,
-      type: 'video' as const,
+
+    // Store videos in Supabase
+    const videos = data.items.map((item: YouTubeVideo) => ({
+      type: 'video',
       title: item.snippet.title,
       description: item.snippet.description,
-      thumbnail: item.snippet.thumbnails.high.url,
-      date: new Date(item.snippet.publishedAt).toLocaleDateString(),
+      thumbnail_url: item.snippet.thumbnails.high.url,
+      content_url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
       source: item.snippet.channelTitle,
+      published_at: item.snippet.publishedAt,
+      external_id: item.id.videoId,
+      metadata: { platform: 'youtube' }
     }));
+
+    const { error: insertError } = await supabase
+      .from('content')
+      .upsert(videos, { 
+        onConflict: 'external_id',
+        ignoreDuplicates: false 
+      });
+
+    if (insertError) {
+      console.error('Error storing videos:', insertError);
+      throw new Error('Failed to store videos in database');
+    }
+
+    return videos;
   } catch (error) {
-    console.error('Error fetching YouTube videos:', error);
+    console.error('Error in fetchYouTubeVideos:', error);
     throw error;
   }
 };
