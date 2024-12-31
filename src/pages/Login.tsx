@@ -22,8 +22,12 @@ export default function Login() {
       }
 
       if (session) {
-        // If we have a session, navigate to the previous page or admin
-        navigate(-1) || navigate("/admin")
+        // If we have a session, try to go back or default to admin
+        try {
+          navigate(-1)
+        } catch {
+          navigate("/admin")
+        }
       } else {
         // For Lovable console users, sign in anonymously with admin role
         const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -41,13 +45,17 @@ export default function Login() {
           return
         }
 
-        // Navigate back or to admin after successful sign in
-        navigate(-1) || navigate("/admin")
+        // Try to go back or default to admin after successful sign in
+        try {
+          navigate(-1)
+        } catch {
+          navigate("/admin")
+        }
       }
     }
 
     checkSession()
-  }, [navigate])
+  }, [navigate, toast])
 
   return (
     <div className="flex min-h-screen items-center justify-center">
