@@ -20,17 +20,14 @@ export const fetchYouTubeVideos = async (channelId: string, maxResults = 10) => 
       .from('app_secrets')
       .select('key_value')
       .eq('key_name', 'YOUTUBE_API_KEY')
-      .single();
+      .maybeSingle();
 
     if (secretError) {
       console.error('Error fetching YouTube API key:', secretError);
-      if (secretError.message.includes('does not exist')) {
-        throw new Error('YouTube API key not configured. Please set up the app_secrets table and add your API key.');
-      }
       throw new Error('Failed to fetch YouTube API key');
     }
 
-    if (!secretData?.key_value) {
+    if (!secretData) {
       throw new Error('YouTube API key not found. Please add it to app_secrets.');
     }
 
