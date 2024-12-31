@@ -3,9 +3,11 @@ import { AdminSidebar } from "@/components/admin/AdminSidebar"
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { YouTubeChannelForm } from "@/components/admin/youtube/YouTubeChannelForm"
 import { YouTubeChannelList } from "@/components/admin/youtube/YouTubeChannelList"
+import { APIKeyForm } from "@/components/admin/settings/APIKeyForm"
 import ContentCard from "@/components/ContentCard"
 import { supabase } from "@/integrations/supabase/client"
 import { useToast } from "@/components/ui/use-toast"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 interface Video {
   id: string
@@ -68,6 +70,15 @@ export default function YouTube() {
           <div className="max-w-4xl mx-auto space-y-8">
             <h1 className="text-3xl font-bold">YouTube Management</h1>
             <div className="grid gap-8">
+              <Card>
+                <CardHeader>
+                  <CardTitle>API Configuration</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <APIKeyForm />
+                </CardContent>
+              </Card>
+              
               <YouTubeChannelForm onSuccess={handleRefresh} />
               <YouTubeChannelList onRefresh={handleRefresh} />
               
