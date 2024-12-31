@@ -2,6 +2,34 @@ import { supabase } from "@/integrations/supabase/client";
 import { getYouTubeApiKey, getChannelDetails } from "./api";
 import { YouTubeVideo } from "./types";
 
+const QUOTA_EXCEEDED_ERROR = "YouTube API quota exceeded. Please try again later or contact support to increase your quota.";
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000; // 1 second
+
+async function delay(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function fetchWithRetry(url: string, retries = MAX_RETRIES): Promise<Response> {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      const errorData = await response.json();
+      if (errorData.error?.errors?.[0]?.reason === 'quotaExceeded') {
+        throw new Error(QUOTA_EXCEEDED_ERROR);
+      }
+      throw new Error(errorData.error?.message || 'API request failed');
+    }
+    return response;
+  } catch (error) {
+    if (retries > 0 && !error.message.includes('quota')) {
+      await delay(RETRY_DELAY);
+      return fetchWithRetry(url, retries - 1);
+    }
+    throw error;
+  }
+}
+
 export const fetchYouTubeVideos = async (channelIdentifier: string, maxResults = 3) => {
   try {
     console.log('Fetching videos for channel:', channelIdentifier);
@@ -44,39 +72,13 @@ export const fetchYouTubeVideos = async (channelIdentifier: string, maxResults =
 
     const channelName = sourceData.name;
     
-    // Fetch videos from YouTube - now limited to maxResults (3)
+    // Fetch videos from YouTube with retry mechanism
     const youtubeUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&maxResults=${maxResults}&order=date&type=video&key=${apiKey}`;
     console.log('Making request to YouTube API...');
     
-    const response = await fetch(youtubeUrl);
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('YouTube API error response:', errorData);
-
-      if (errorData.error?.code === 403) {
-        if (errorData.error.message.includes('API not enabled')) {
-          throw new Error(
-            'The YouTube Data API is not enabled. Please visit the Google Cloud Console to enable it: ' +
-            'https://console.developers.google.com/apis/library/youtube.googleapis.com'
-          );
-        }
-        if (errorData.error.message.includes('quota')) {
-          throw new Error(
-            'YouTube API quota exceeded. Please try again later or check your quota limits in the Google Cloud Console.'
-          );
-        }
-        if (errorData.error.message.includes('invalid')) {
-          throw new Error(
-            'Invalid YouTube API key. Please check your API key in the YouTube settings.'
-          );
-        }
-      }
-      
-      throw new Error(errorData.error?.message || 'YouTube API request failed');
-    }
-
+    const response = await fetchWithRetry(youtubeUrl);
     const data = await response.json();
+    
     console.log(`Found ${data.items?.length || 0} videos`);
 
     if (!data.items?.length) {
@@ -115,9 +117,6 @@ export const fetchYouTubeVideos = async (channelIdentifier: string, maxResults =
     return videos;
   } catch (error) {
     console.error('Error in fetchYouTubeVideos:', error);
-    if (error instanceof Error) {
-      throw error;
-    }
-    throw new Error('An unexpected error occurred while fetching YouTube videos');
+    throw error;
   }
 };

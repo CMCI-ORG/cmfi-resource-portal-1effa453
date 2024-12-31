@@ -111,32 +111,33 @@ export function YouTubeChannelList({ onRefresh }: { onRefresh?: () => void }) {
 
   async function handleSync(channel: Channel) {
     try {
-      setIsSyncing(channel.id)
-      await fetchYouTubeVideos(channel.source_id)
+      setIsSyncing(channel.id);
+      await fetchYouTubeVideos(channel.source_id);
       
       const { error } = await supabase
         .from("content_sources")
         .update({ last_synced_at: new Date().toISOString() })
-        .eq("id", channel.id)
+        .eq("id", channel.id);
 
-      if (error) throw error
+      if (error) throw error;
 
       toast({
         title: "Channel synced",
         description: "Videos have been updated successfully.",
-      })
+      });
       
-      fetchChannels()
-      if (onRefresh) onRefresh()
+      fetchChannels();
+      if (onRefresh) onRefresh();
     } catch (error) {
-      console.error("Error syncing videos:", error)
+      console.error("Error syncing videos:", error);
+      const errorMessage = error instanceof Error ? error.message : "There was a problem syncing the YouTube videos.";
       toast({
         title: "Sync failed",
-        description: "There was a problem syncing the YouTube videos.",
+        description: errorMessage,
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsSyncing(null)
+      setIsSyncing(null);
     }
   }
 

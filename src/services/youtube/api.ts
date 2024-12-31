@@ -21,43 +21,52 @@ export async function getYouTubeApiKey() {
 }
 
 export async function getChannelDetails(channelIdentifier: string, apiKey: string): Promise<YouTubeChannel> {
-  let endpoint = '';
-  
-  if (channelIdentifier.startsWith('@')) {
-    // First get channel ID from handle
+  try {
+    let channelId = channelIdentifier;
+    
+    if (channelIdentifier.startsWith('@')) {
+      // First get channel ID from handle with proper error handling
+      const handleResponse = await fetch(
+        `https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=${encodeURIComponent(channelIdentifier)}&key=${apiKey}`
+      );
+
+      if (!handleResponse.ok) {
+        const errorData = await handleResponse.json();
+        if (errorData.error?.errors?.[0]?.reason === 'quotaExceeded') {
+          throw new Error("YouTube API quota exceeded. Please try again later or contact support to increase your quota.");
+        }
+        throw new Error(errorData.error?.message || 'Failed to fetch channel ID');
+      }
+
+      const handleData = await handleResponse.json();
+      if (!handleData.items?.[0]?.id?.channelId) {
+        throw new Error(`No channel found for handle: ${channelIdentifier}`);
+      }
+      
+      channelId = handleData.items[0].id.channelId;
+    }
+
+    // Get channel details including location with proper error handling
     const response = await fetch(
-      `https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=${encodeURIComponent(channelIdentifier)}&key=${apiKey}`
+      `https://www.googleapis.com/youtube/v3/channels?part=snippet,brandingSettings&id=${channelId}&key=${apiKey}`
     );
 
     if (!response.ok) {
       const errorData = await response.json();
-      console.error('YouTube API error response:', errorData);
-      throw new Error(errorData.error?.message || 'Failed to fetch channel ID');
+      if (errorData.error?.errors?.[0]?.reason === 'quotaExceeded') {
+        throw new Error("YouTube API quota exceeded. Please try again later or contact support to increase your quota.");
+      }
+      throw new Error(errorData.error?.message || 'Failed to fetch channel details');
     }
 
     const data = await response.json();
-    if (!data.items?.[0]?.id?.channelId) {
-      throw new Error(`No channel found for handle: ${channelIdentifier}`);
+    if (!data.items?.[0]) {
+      throw new Error(`No channel found with ID: ${channelId}`);
     }
-    
-    channelIdentifier = data.items[0].id.channelId;
+
+    return data.items[0];
+  } catch (error) {
+    console.error('Error in getChannelDetails:', error);
+    throw error;
   }
-
-  // Get channel details including location
-  const response = await fetch(
-    `https://www.googleapis.com/youtube/v3/channels?part=snippet,brandingSettings&id=${channelIdentifier}&key=${apiKey}`
-  );
-
-  if (!response.ok) {
-    const errorData = await response.json();
-    console.error('YouTube API error response:', errorData);
-    throw new Error(errorData.error?.message || 'Failed to fetch channel details');
-  }
-
-  const data = await response.json();
-  if (!data.items?.[0]) {
-    throw new Error(`No channel found with ID: ${channelIdentifier}`);
-  }
-
-  return data.items[0];
 }
