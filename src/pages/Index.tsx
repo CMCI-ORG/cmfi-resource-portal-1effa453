@@ -121,6 +121,7 @@ export default function Index() {
               thumbnail={item.thumbnail_url || ""}
               date={new Date(item.published_at).toLocaleDateString()}
               source={item.source}
+              contentUrl={item.content_url}
             />
           ))}
         </div>
