@@ -1,35 +1,46 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { fetchYouTubeVideos } from "@/services/youtube";
 import { supabase } from "@/integrations/supabase/client";
 import ContentCard from "@/components/ContentCard";
 import SearchBar from "@/components/SearchBar";
 import ContentFilter from "@/components/ContentFilter";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 import { useState } from "react";
-
-const CHANNEL_ID = "UCmXmlB4-HJytD7wek0Uo97A"; // Replace with your YouTube channel ID
 
 export default function Index() {
   const { toast } = useToast();
   const [filter, setFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   
-  const { data: videos = [], isLoading, error } = useQuery({
-    queryKey: ['youtube-videos'],
-    queryFn: () => fetchYouTubeVideos(CHANNEL_ID),
+  const { data: content = [], isLoading, error } = useQuery({
+    queryKey: ['content'],
+    queryFn: async () => {
+      console.log('Fetching content from database...');
+      const { data, error } = await supabase
+        .from("content")
+        .select("*")
+        .order("published_at", { ascending: false });
+
+      if (error) {
+        console.error('Error fetching content:', error);
+        throw error;
+      }
+      
+      console.log(`Found ${data?.length || 0} content items`);
+      return data || [];
+    },
     meta: {
       onError: (error: Error) => {
         toast({
           title: "Error",
-          description: error.message || "Failed to fetch videos. Please try again later.",
+          description: error.message || "Failed to fetch content. Please try again later.",
           variant: "destructive",
         });
       }
     }
   });
 
-  // Set up real-time subscription
+  // Set up real-time subscription for content updates
   useEffect(() => {
     const channel = supabase
       .channel('content-changes')
@@ -43,7 +54,6 @@ export default function Index() {
         (payload) => {
           console.log('Content changed:', payload);
           // Invalidate and refetch content
-          // Note: In a production app, you might want to handle this more gracefully
           window.location.reload();
         }
       )
@@ -54,10 +64,11 @@ export default function Index() {
     };
   }, []);
 
-  const filteredContent = videos.filter(content => {
-    const matchesFilter = filter === "all" || content.type === filter;
-    const matchesSearch = content.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         content.description.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredContent = content.filter(item => {
+    const matchesFilter = filter === "all" || item.type === filter;
+    const matchesSearch = 
+      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.description?.toLowerCase() || '').includes(searchQuery.toLowerCase());
     return matchesFilter && matchesSearch;
   });
 
@@ -65,6 +76,15 @@ export default function Index() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <h2 className="text-2xl font-bold text-red-500 mb-4">Error Loading Content</h2>
+        <p className="text-gray-600">Please try refreshing the page.</p>
       </div>
     );
   }
@@ -79,10 +99,15 @@ export default function Index() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredContent.map((content) => (
+        {filteredContent.map((item) => (
           <ContentCard
-            key={content.external_id}
-            {...content}
+            key={item.id}
+            type={item.type}
+            title={item.title}
+            description={item.description || ""}
+            thumbnail={item.thumbnail_url || ""}
+            date={new Date(item.published_at).toLocaleDateString()}
+            source={item.source}
           />
         ))}
       </div>
