@@ -2,6 +2,14 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import { WordPressFeedParser } from "../WordPressFeedParser"
 import { supabase } from "@/integrations/supabase/client"
+import { useToast } from "@/hooks/use-toast"
+
+// Mock hooks
+vi.mock("@/hooks/use-toast", () => ({
+  useToast: vi.fn(() => ({
+    toast: vi.fn(),
+  })),
+}))
 
 // Mock Supabase client
 vi.mock("@/integrations/supabase/client", () => ({
@@ -24,8 +32,13 @@ vi.mock("@/integrations/supabase/client", () => ({
 }))
 
 describe("WordPressFeedParser", () => {
+  const mockToast = vi.fn()
+  
   beforeEach(() => {
     vi.clearAllMocks()
+    ;(useToast as jest.Mock).mockImplementation(() => ({
+      toast: mockToast,
+    }))
   })
 
   it("renders feed form correctly", () => {
@@ -46,6 +59,10 @@ describe("WordPressFeedParser", () => {
 
     await waitFor(() => {
       expect(supabase.from).toHaveBeenCalledWith("content_sources")
+      expect(mockToast).toHaveBeenCalledWith(expect.objectContaining({
+        title: "Success",
+        description: "WordPress feeds parsed and articles imported successfully",
+      }))
     })
   })
 
@@ -58,6 +75,37 @@ describe("WordPressFeedParser", () => {
     fireEvent.change(urlInput, { target: { value: "invalid-url" } })
     fireEvent.click(importButton)
 
-    expect(await screen.findByText(/Please enter valid feed/i)).toBeInTheDocument()
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(expect.objectContaining({
+        title: "Error",
+        description: "Please enter valid feed names and URLs",
+        variant: "destructive",
+      }))
+    })
+  })
+
+  it("shows loading state during import", async () => {
+    render(<WordPressFeedParser />)
+    
+    const nameInput = screen.getByLabelText(/Feed Name/i)
+    const urlInput = screen.getByLabelText(/Feed URL/i)
+    const importButton = screen.getByText("Import")
+
+    fireEvent.change(nameInput, { target: { value: "Test Blog" } })
+    fireEvent.change(urlInput, { target: { value: "https://test.com/feed" } })
+    fireEvent.click(importButton)
+
+    expect(screen.getByText(/Initializing feed parser/i)).toBeInTheDocument()
+    expect(importButton).toBeDisabled()
+  })
+
+  it("handles display summary toggle", () => {
+    render(<WordPressFeedParser />)
+    
+    const toggle = screen.getByRole("switch")
+    expect(toggle).toBeChecked()
+    
+    fireEvent.click(toggle)
+    expect(toggle).not.toBeChecked()
   })
 })

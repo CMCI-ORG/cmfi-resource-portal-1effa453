@@ -2,7 +2,6 @@ import { test, expect } from "@playwright/test"
 
 test.describe("Blog Management", () => {
   test.beforeEach(async ({ page }) => {
-    // Navigate to the blog management page
     await page.goto("/admin/blog")
   })
 
@@ -15,8 +14,8 @@ test.describe("Blog Management", () => {
     await page.fill('[placeholder="Enter WordPress RSS feed URL"]', "https://test.com/feed")
     await page.click("text=Import")
 
-    // Wait for success message
-    await expect(page.getByText(/successfully/i)).toBeVisible()
+    // Wait for success toast
+    await expect(page.getByText("WordPress feeds parsed and articles imported successfully")).toBeVisible()
   })
 
   test("should validate feed URL", async ({ page }) => {
@@ -24,7 +23,19 @@ test.describe("Blog Management", () => {
     await page.fill('[placeholder="Enter WordPress RSS feed URL"]', "invalid-url")
     await page.click("text=Import")
 
-    // Wait for error message
-    await expect(page.getByText(/Please enter valid feed/i)).toBeVisible()
+    // Wait for error toast
+    await expect(page.getByText("Please enter valid feed names and URLs")).toBeVisible()
+  })
+
+  test("should toggle display summary option", async ({ page }) => {
+    const switchElement = page.getByRole("switch")
+    await expect(switchElement).toBeVisible()
+    
+    // Should be checked by default
+    await expect(switchElement).toBeChecked()
+    
+    // Toggle off
+    await switchElement.click()
+    await expect(switchElement).not.toBeChecked()
   })
 })
