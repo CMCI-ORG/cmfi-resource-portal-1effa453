@@ -103,7 +103,7 @@ export function WordPressFeedParser() {
         const { data: sourceData, error: sourceError } = await supabase
           .from("content_sources")
           .insert({
-            type: "wordpress",  // Explicitly using lowercase to match the constraint
+            type: "wordpress",  // Using lowercase to match existing constraint
             name: new URL(feed.url).hostname,
             source_url: feed.url,
             source_id: feed.url,
