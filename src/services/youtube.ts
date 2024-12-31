@@ -32,16 +32,43 @@ async function getYouTubeApiKey() {
   return data.key_value;
 }
 
-export const fetchYouTubeVideos = async (channelId: string, maxResults = 10) => {
+async function getChannelId(handle: string, apiKey: string): Promise<string> {
+  if (!handle.startsWith('@')) {
+    return handle; // If it's not a handle, assume it's already a channel ID
+  }
+
+  const response = await fetch(
+    `https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=${encodeURIComponent(handle)}&key=${apiKey}`
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    console.error('YouTube API error response:', errorData);
+    throw new Error(errorData.error?.message || 'Failed to fetch channel ID');
+  }
+
+  const data = await response.json();
+  if (!data.items?.[0]?.id?.channelId) {
+    throw new Error(`No channel found for handle: ${handle}`);
+  }
+
+  return data.items[0].id.channelId;
+}
+
+export const fetchYouTubeVideos = async (channelIdentifier: string, maxResults = 10) => {
   try {
-    console.log('Fetching videos for channel:', channelId);
+    console.log('Fetching videos for channel:', channelIdentifier);
     
-    if (!channelId) {
-      throw new Error('Channel ID is required');
+    if (!channelIdentifier) {
+      throw new Error('Channel ID or handle is required');
     }
 
     const apiKey = await getYouTubeApiKey();
     console.log('API key retrieved successfully');
+    
+    // Convert handle to channel ID if necessary
+    const channelId = await getChannelId(channelIdentifier, apiKey);
+    console.log('Using channel ID:', channelId);
     
     // Fetch videos from YouTube
     const youtubeUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&maxResults=${maxResults}&order=date&type=video&key=${apiKey}`;
