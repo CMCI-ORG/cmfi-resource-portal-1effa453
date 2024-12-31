@@ -36,10 +36,31 @@ export default function Index() {
     try {
       console.log('Fetching content from database...')
       
-      const { data, error } = await supabase
+      // First, get the list of added channel names
+      const { data: sources, error: sourcesError } = await supabase
+        .from("content_sources")
+        .select("name")
+        .eq("type", "youtube")
+
+      if (sourcesError) {
+        console.error('Error fetching sources:', sourcesError)
+        throw sourcesError
+      }
+
+      // Extract channel names
+      const channelNames = sources?.map(source => source.name) || []
+      
+      let query = supabase
         .from("content")
         .select("*")
         .order("published_at", { ascending: false })
+
+      // If there are channels added, filter content by those channels
+      if (channelNames.length > 0) {
+        query = query.in("source", channelNames)
+      }
+      
+      const { data, error } = await query
 
       if (error) {
         console.error('Error fetching content:', error)
