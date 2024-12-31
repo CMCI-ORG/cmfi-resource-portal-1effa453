@@ -47,6 +47,9 @@ export default function Login() {
             return
           }
 
+          // Add delay before signup attempt to avoid rate limits
+          await new Promise(resolve => setTimeout(resolve, 1000))
+
           // If sign in fails, try creating the console user first
           const { error: signUpError } = await supabase.auth.signUp({
             email: "gordonfru@gmail.com",
@@ -78,6 +81,9 @@ export default function Login() {
             })
             return
           }
+
+          // Add delay before retry to avoid rate limits
+          await new Promise(resolve => setTimeout(resolve, 1000))
 
           // Try signing in again after creating the user
           const { error: retryError } = await supabase.auth.signInWithPassword({
