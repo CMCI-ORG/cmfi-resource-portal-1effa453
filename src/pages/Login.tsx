@@ -29,17 +29,17 @@ export default function Login() {
           navigate("/admin")
         }
       } else {
-        // For Lovable console users, sign in anonymously with admin role
+        // For Lovable console users, sign in with admin credentials
         const { error: signInError } = await supabase.auth.signInWithPassword({
           email: "admin@lovable.dev",
-          password: "lovable-console-user",
+          password: "lovable",
         })
 
         if (signInError) {
           console.error("Error signing in:", signInError)
           toast({
             title: "Error signing in",
-            description: "Please try again later",
+            description: signInError.message,
             variant: "destructive",
           })
           return
