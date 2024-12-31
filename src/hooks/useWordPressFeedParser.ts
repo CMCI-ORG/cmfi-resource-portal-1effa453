@@ -91,7 +91,7 @@ export function useWordPressFeedParser() {
         const { data: sourceData, error: sourceError } = await supabase
           .from("content_sources")
           .insert({
-            type: "blog",
+            type: "wordpress",  // Changed from "blog" to "wordpress"
             name: feed.name,
             source_url: feed.url,
             source_id: feed.url,
@@ -126,7 +126,7 @@ export function useWordPressFeedParser() {
 
         const { error: insertError } = await supabase.from("content").insert(
           feedData.items.map((item: any) => ({
-            type: "blog",
+            type: "blog",  // This remains "blog" as it's an enum in the content table
             title: item.title,
             description: item.description,
             content_url: item.link,
