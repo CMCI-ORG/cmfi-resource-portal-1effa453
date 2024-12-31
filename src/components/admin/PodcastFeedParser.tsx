@@ -23,13 +23,15 @@ export function PodcastFeedParser() {
 
     setIsLoading(true)
     try {
-      const response = await fetch(`/api/parse-podcast-feed?url=${encodeURIComponent(feedUrl)}`)
-      const data = await response.json()
+      const { data, error } = await supabase.functions.invoke('parse-podcast-feed', {
+        body: { url: feedUrl }
+      })
 
-      if (!response.ok) throw new Error(data.error || "Failed to parse feed")
+      if (error) throw error
+      if (!data?.items) throw new Error("No episodes found in feed")
 
       // Insert podcast episodes into the database
-      const { error } = await supabase.from("content").insert(
+      const { error: insertError } = await supabase.from("content").insert(
         data.items.map((item: any) => ({
           type: "podcast",
           title: item.title,
@@ -46,7 +48,7 @@ export function PodcastFeedParser() {
         }))
       )
 
-      if (error) throw error
+      if (insertError) throw insertError
 
       toast({
         title: "Success",
