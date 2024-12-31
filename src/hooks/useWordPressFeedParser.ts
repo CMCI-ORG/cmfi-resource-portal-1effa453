@@ -3,12 +3,13 @@ import { useToast } from "@/hooks/use-toast"
 import { supabase } from "@/integrations/supabase/client"
 
 interface FeedState {
+  name: string
   url: string
   displaySummary: boolean
 }
 
 export function useWordPressFeedParser() {
-  const [feeds, setFeeds] = useState<FeedState[]>([{ url: "", displaySummary: true }])
+  const [feeds, setFeeds] = useState<FeedState[]>([{ name: "", url: "", displaySummary: true }])
   const [isLoading, setIsLoading] = useState(false)
   const [progress, setProgress] = useState(0)
   const [status, setStatus] = useState("")
@@ -21,6 +22,10 @@ export function useWordPressFeedParser() {
     } catch {
       return false
     }
+  }
+
+  const validateFeedName = (name: string): boolean => {
+    return name.length > 0
   }
 
   const resetState = () => {
@@ -39,25 +44,20 @@ export function useWordPressFeedParser() {
     resetState()
   }
 
-  const addFeed = () => setFeeds([...feeds, { url: "", displaySummary: true }])
+  const addFeed = () => setFeeds([...feeds, { name: "", url: "", displaySummary: true }])
   const removeFeed = (index: number) => setFeeds(feeds.filter((_, i) => i !== index))
-  const updateFeed = (index: number, url: string) => {
+  const updateFeed = (index: number, field: keyof FeedState, value: string | boolean) => {
     const newFeeds = [...feeds]
-    newFeeds[index].url = url
-    setFeeds(newFeeds)
-  }
-  const updateDisplaySummary = (index: number, displaySummary: boolean) => {
-    const newFeeds = [...feeds]
-    newFeeds[index].displaySummary = displaySummary
+    newFeeds[index] = { ...newFeeds[index], [field]: value }
     setFeeds(newFeeds)
   }
 
   const parseFeeds = async () => {
-    const invalidFeeds = feeds.filter(feed => !validateFeedUrl(feed.url))
+    const invalidFeeds = feeds.filter(feed => !validateFeedUrl(feed.url) || !validateFeedName(feed.name))
     if (invalidFeeds.length > 0) {
       toast({
         title: "Error",
-        description: "Please enter valid feed URLs",
+        description: "Please enter valid feed names and URLs",
         variant: "destructive",
       })
       return
@@ -83,12 +83,11 @@ export function useWordPressFeedParser() {
         setProgress((i + 1) * (90 / feeds.length))
         setStatus(`Processing feed ${i + 1} of ${feeds.length}...`)
 
-        // First, add the feed source with explicit type "blog"
         const { data: sourceData, error: sourceError } = await supabase
           .from("content_sources")
           .insert({
-            type: "blog",  // Changed from "wordpress" to "blog" to match the constraint
-            name: new URL(feed.url).hostname,
+            type: "blog",
+            name: feed.name,
             source_url: feed.url,
             source_id: feed.url,
             feed_url: feed.url,
@@ -106,7 +105,6 @@ export function useWordPressFeedParser() {
           throw new Error("Failed to create content source")
         }
 
-        // Then fetch and parse the feed
         const { data: feedData, error: feedError } = await supabase.functions.invoke(
           "parse-wordpress-feed",
           {
@@ -121,15 +119,14 @@ export function useWordPressFeedParser() {
         if (feedError) throw feedError
         if (!feedData?.items) throw new Error("No articles found in feed")
 
-        // Insert blog posts into the database
         const { error: insertError } = await supabase.from("content").insert(
           feedData.items.map((item: any) => ({
-            type: "blog",  // Ensure we're using "blog" type consistently
+            type: "blog",
             title: item.title,
             description: item.description,
             content_url: item.link,
             thumbnail_url: item.thumbnail,
-            source: new URL(feed.url).hostname,
+            source: feed.name,
             published_at: item.pubDate,
             external_id: item.guid,
             metadata: {
@@ -151,8 +148,7 @@ export function useWordPressFeedParser() {
         description: "WordPress feeds parsed and articles imported successfully",
       })
 
-      // Reset form after successful import
-      setFeeds([{ url: "", displaySummary: true }])
+      setFeeds([{ name: "", url: "", displaySummary: true }])
     } catch (error) {
       handleError(error)
     } finally {
@@ -170,7 +166,6 @@ export function useWordPressFeedParser() {
     addFeed,
     removeFeed,
     updateFeed,
-    updateDisplaySummary,
     parseFeeds
   }
 }

@@ -15,7 +15,6 @@ export function WordPressFeedParser() {
     addFeed,
     removeFeed,
     updateFeed,
-    updateDisplaySummary,
     parseFeeds
   } = useWordPressFeedParser()
 
@@ -32,7 +31,6 @@ export function WordPressFeedParser() {
             onAddFeed={addFeed}
             onRemoveFeed={removeFeed}
             onUpdateFeed={updateFeed}
-            onUpdateDisplaySummary={updateDisplaySummary}
           />
           
           <Button 
