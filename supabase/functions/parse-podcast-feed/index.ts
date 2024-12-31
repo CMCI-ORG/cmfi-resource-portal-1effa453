@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { DOMParser } from "https://deno.land/x/deno_dom/deno-dom-wasm.ts"
+import { parse } from "https://deno.land/x/xml@2.1.1/mod.ts"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -25,22 +25,24 @@ serve(async (req) => {
     console.log("Fetching podcast feed from:", url)
     const response = await fetch(url)
     const xmlText = await response.text()
-    const parser = new DOMParser()
-    const doc = parser.parseFromString(xmlText, "text/xml")
-
-    if (!doc) {
-      throw new Error("Failed to parse XML")
+    
+    // Parse XML using deno-xml parser
+    const doc = parse(xmlText)
+    const channel = doc.rss?.channel
+    
+    if (!channel || !Array.isArray(channel.item)) {
+      throw new Error("Invalid RSS feed format")
     }
 
-    const items = Array.from(doc.getElementsByTagName("item")).map((item) => ({
-      title: item.querySelector("title")?.textContent || "",
-      description: item.querySelector("description")?.textContent || "",
-      url: item.querySelector("enclosure")?.getAttribute("url") || "",
-      guid: item.querySelector("guid")?.textContent || "",
-      pubDate: new Date(item.querySelector("pubDate")?.textContent || "").toISOString(),
-      duration: item.querySelector("itunes\\:duration")?.textContent || "",
-      author: item.querySelector("itunes\\:author")?.textContent || "",
-      thumbnail: item.querySelector("itunes\\:image")?.getAttribute("href") || "",
+    const items = channel.item.map((item: any) => ({
+      title: item.title?.[0] || "",
+      description: item.description?.[0] || "",
+      url: item.enclosure?.[0]?.["@url"] || "",
+      guid: item.guid?.[0] || "",
+      pubDate: new Date(item.pubDate?.[0] || "").toISOString(),
+      duration: item["itunes:duration"]?.[0] || "",
+      author: item["itunes:author"]?.[0] || "",
+      thumbnail: item["itunes:image"]?.[0]?.["@href"] || channel["itunes:image"]?.[0]?.["@href"] || "",
     }))
 
     console.log(`Successfully parsed ${items.length} episodes`)
