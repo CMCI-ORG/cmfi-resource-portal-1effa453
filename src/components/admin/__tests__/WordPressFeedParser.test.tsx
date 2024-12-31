@@ -36,7 +36,8 @@ describe("WordPressFeedParser", () => {
   
   beforeEach(() => {
     vi.clearAllMocks()
-    ;(useToast as jest.Mock).mockImplementation(() => ({
+    // Fix: Use proper type assertion for vitest mock
+    ;(useToast as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => ({
       toast: mockToast,
     }))
   })
