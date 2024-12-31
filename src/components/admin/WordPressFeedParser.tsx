@@ -5,8 +5,12 @@ import { ErrorBoundary } from "@/components/ErrorBoundary"
 import { WordPressFeedForm } from "./wordpress/WordPressFeedForm"
 import { WordPressFeedProgress } from "./wordpress/WordPressFeedProgress"
 import { useWordPressFeedParser } from "@/hooks/useWordPressFeedParser"
+import { useEffect } from "react"
+import { useNavigate } from "react-router-dom"
+import { supabase } from "@/integrations/supabase/client"
 
 export function WordPressFeedParser() {
+  const navigate = useNavigate()
   const {
     feeds,
     isLoading,
@@ -15,11 +19,46 @@ export function WordPressFeedParser() {
     addFeed,
     removeFeed,
     updateFeed,
-    parseFeeds
+    parseFeeds,
+    error
   } = useWordPressFeedParser()
 
+  // Verify admin status
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      if (authError || !user) {
+        navigate("/login")
+        return
+      }
+
+      const { data: isAdmin, error: adminCheckError } = await supabase
+        .rpc('is_admin', { user_id: user.id })
+      
+      if (adminCheckError || !isAdmin) {
+        navigate("/")
+      }
+    }
+
+    checkAdminStatus()
+  }, [navigate])
+
+  // Custom error fallback for the component
+  const fallback = (
+    <Card>
+      <CardHeader>
+        <CardTitle>Error Loading Feed Parser</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p className="text-red-500">
+          There was an error loading the feed parser. Please try refreshing the page.
+        </p>
+      </CardContent>
+    </Card>
+  )
+
   return (
-    <ErrorBoundary>
+    <ErrorBoundary fallback={fallback}>
       <Card>
         <CardHeader>
           <CardTitle>Import WordPress Blogs</CardTitle>
@@ -31,6 +70,7 @@ export function WordPressFeedParser() {
             onAddFeed={addFeed}
             onRemoveFeed={removeFeed}
             onUpdateFeed={updateFeed}
+            error={error}
           />
           
           <Button 
