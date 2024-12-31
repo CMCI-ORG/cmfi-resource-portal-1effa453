@@ -17,7 +17,12 @@ export const fetchYouTubeVideos = async (channelId: string, maxResults = 10) => 
   try {
     console.log('Fetching videos for channel:', channelId);
     
-    // Fetch API key from Supabase
+    // Validate channelId
+    if (!channelId) {
+      throw new Error('Channel ID is required');
+    }
+
+    // Fetch API key from Supabase with detailed error logging
     const { data: secretData, error: secretError } = await supabase
       .from('app_secrets')
       .select('key_value')
@@ -31,17 +36,17 @@ export const fetchYouTubeVideos = async (channelId: string, maxResults = 10) => 
 
     if (!secretData?.key_value) {
       console.error('YouTube API key not found in app_secrets');
-      throw new Error('YouTube API key not found or empty');
+      throw new Error('YouTube API key not found. Please add it in the Supabase settings.');
     }
 
     const apiKey = secretData.key_value;
     console.log('Making request to YouTube API...');
     
-    // Fetch videos from YouTube
-    const response = await fetch(
-      `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&maxResults=${maxResults}&order=date&type=video&key=${apiKey}`
-    );
-
+    // Fetch videos from YouTube with error handling
+    const youtubeUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&maxResults=${maxResults}&order=date&type=video&key=${apiKey}`;
+    
+    const response = await fetch(youtubeUrl);
+    
     if (!response.ok) {
       const errorData = await response.json();
       console.error('YouTube API error:', errorData);
@@ -56,7 +61,7 @@ export const fetchYouTubeVideos = async (channelId: string, maxResults = 10) => 
       return [];
     }
 
-    // Store videos in Supabase
+    // Transform and store videos in Supabase
     const videos = data.items.map((item: YouTubeVideo) => ({
       type: 'video',
       title: item.snippet.title,
@@ -71,6 +76,7 @@ export const fetchYouTubeVideos = async (channelId: string, maxResults = 10) => 
 
     console.log(`Storing ${videos.length} videos in database...`);
 
+    // Store videos with better error handling
     const { error: insertError } = await supabase
       .from('content')
       .upsert(videos, { 
@@ -87,6 +93,10 @@ export const fetchYouTubeVideos = async (channelId: string, maxResults = 10) => 
     return videos;
   } catch (error) {
     console.error('Error in fetchYouTubeVideos:', error);
-    throw error;
+    // Re-throw the error with a more specific message
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error('An unexpected error occurred while fetching YouTube videos');
   }
 };
