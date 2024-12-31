@@ -77,6 +77,7 @@ export type Database = {
           created_at: string
           id: string
           last_synced_at: string | null
+          location: string | null
           metadata: Json | null
           name: string
           source_id: string
@@ -87,6 +88,7 @@ export type Database = {
           created_at?: string
           id?: string
           last_synced_at?: string | null
+          location?: string | null
           metadata?: Json | null
           name: string
           source_id: string
@@ -97,6 +99,7 @@ export type Database = {
           created_at?: string
           id?: string
           last_synced_at?: string | null
+          location?: string | null
           metadata?: Json | null
           name?: string
           source_id?: string

@@ -13,6 +13,19 @@ interface YouTubeVideo {
   };
 }
 
+interface YouTubeChannel {
+  id: string;
+  snippet: {
+    title: string;
+    description: string;
+  };
+  brandingSettings?: {
+    channel?: {
+      country?: string;
+    };
+  };
+}
+
 async function getYouTubeApiKey() {
   const { data, error } = await supabase
     .from("app_secrets")
@@ -32,27 +45,46 @@ async function getYouTubeApiKey() {
   return data.key_value;
 }
 
-async function getChannelId(handle: string, apiKey: string): Promise<string> {
-  if (!handle.startsWith('@')) {
-    return handle; // If it's not a handle, assume it's already a channel ID
+async function getChannelDetails(channelIdentifier: string, apiKey: string): Promise<YouTubeChannel> {
+  let endpoint = '';
+  
+  if (channelIdentifier.startsWith('@')) {
+    // First get channel ID from handle
+    const response = await fetch(
+      `https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=${encodeURIComponent(channelIdentifier)}&key=${apiKey}`
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('YouTube API error response:', errorData);
+      throw new Error(errorData.error?.message || 'Failed to fetch channel ID');
+    }
+
+    const data = await response.json();
+    if (!data.items?.[0]?.id?.channelId) {
+      throw new Error(`No channel found for handle: ${channelIdentifier}`);
+    }
+    
+    channelIdentifier = data.items[0].id.channelId;
   }
 
+  // Get channel details including location
   const response = await fetch(
-    `https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=${encodeURIComponent(handle)}&key=${apiKey}`
+    `https://www.googleapis.com/youtube/v3/channels?part=snippet,brandingSettings&id=${channelIdentifier}&key=${apiKey}`
   );
 
   if (!response.ok) {
     const errorData = await response.json();
     console.error('YouTube API error response:', errorData);
-    throw new Error(errorData.error?.message || 'Failed to fetch channel ID');
+    throw new Error(errorData.error?.message || 'Failed to fetch channel details');
   }
 
   const data = await response.json();
-  if (!data.items?.[0]?.id?.channelId) {
-    throw new Error(`No channel found for handle: ${handle}`);
+  if (!data.items?.[0]) {
+    throw new Error(`No channel found with ID: ${channelIdentifier}`);
   }
 
-  return data.items[0].id.channelId;
+  return data.items[0];
 }
 
 export const fetchYouTubeVideos = async (channelIdentifier: string, maxResults = 10) => {
@@ -66,11 +98,24 @@ export const fetchYouTubeVideos = async (channelIdentifier: string, maxResults =
     const apiKey = await getYouTubeApiKey();
     console.log('API key retrieved successfully');
     
-    // Convert handle to channel ID if necessary
-    const channelId = await getChannelId(channelIdentifier, apiKey);
-    console.log('Using channel ID:', channelId);
+    // Get channel details including location
+    const channelDetails = await getChannelDetails(channelIdentifier, apiKey);
+    const channelId = channelDetails.id;
+    const location = channelDetails.brandingSettings?.channel?.country || null;
+    
+    console.log('Channel location:', location);
 
-    // Get the channel name from content_sources to use as source
+    // Update the channel location in the database
+    const { error: updateError } = await supabase
+      .from("content_sources")
+      .update({ location })
+      .eq("source_id", channelIdentifier);
+
+    if (updateError) {
+      console.error('Error updating channel location:', updateError);
+    }
+
+    // Get the channel name from content_sources
     const { data: sourceData, error: sourceError } = await supabase
       .from("content_sources")
       .select("name")
@@ -94,7 +139,6 @@ export const fetchYouTubeVideos = async (channelIdentifier: string, maxResults =
       const errorData = await response.json();
       console.error('YouTube API error response:', errorData);
 
-      // Handle specific YouTube API errors
       if (errorData.error?.code === 403) {
         if (errorData.error.message.includes('API not enabled')) {
           throw new Error(
@@ -132,7 +176,7 @@ export const fetchYouTubeVideos = async (channelIdentifier: string, maxResults =
       description: item.snippet.description,
       thumbnail_url: item.snippet.thumbnails.high.url,
       content_url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
-      source: channelName, // Use the name from content_sources
+      source: channelName,
       published_at: item.snippet.publishedAt,
       external_id: item.id.videoId,
       metadata: { platform: 'youtube' }

@@ -6,6 +6,7 @@ import { TableCell, TableRow } from "@/components/ui/table"
 interface YouTubeChannelEditFormProps {
   name: string
   sourceId: string
+  location: string | null
   lastSyncedAt: string | null
   onNameChange: (value: string) => void
   onSourceIdChange: (value: string) => void
@@ -16,6 +17,7 @@ interface YouTubeChannelEditFormProps {
 export function YouTubeChannelEditForm({
   name,
   sourceId,
+  location,
   lastSyncedAt,
   onNameChange,
   onSourceIdChange,
@@ -38,6 +40,7 @@ export function YouTubeChannelEditForm({
           placeholder="Channel ID or @handle"
         />
       </TableCell>
+      <TableCell>{location || "Not available"}</TableCell>
       <TableCell>
         {lastSyncedAt
           ? new Date(lastSyncedAt).toLocaleString()

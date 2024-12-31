@@ -17,6 +17,7 @@ interface Channel {
   name: string
   source_id: string
   last_synced_at: string | null
+  location: string | null
 }
 
 export function YouTubeChannelList({ onRefresh }: { onRefresh?: () => void }) {
@@ -185,6 +186,7 @@ export function YouTubeChannelList({ onRefresh }: { onRefresh?: () => void }) {
             <TableRow>
               <TableHead>Channel Name</TableHead>
               <TableHead>Channel ID</TableHead>
+              <TableHead>Location</TableHead>
               <TableHead>Last Synced</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>

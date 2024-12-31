@@ -8,6 +8,7 @@ interface Channel {
   name: string
   source_id: string
   last_synced_at: string | null
+  location: string | null
 }
 
 interface YouTubeChannelItemProps {
@@ -47,6 +48,7 @@ export function YouTubeChannelItem({
       <YouTubeChannelEditForm
         name={editedName}
         sourceId={editedSourceId}
+        location={channel.location}
         lastSyncedAt={channel.last_synced_at}
         onNameChange={setEditedName}
         onSourceIdChange={setEditedSourceId}
@@ -60,6 +62,7 @@ export function YouTubeChannelItem({
     <TableRow>
       <TableCell>{channel.name}</TableCell>
       <TableCell>{channel.source_id}</TableCell>
+      <TableCell>{channel.location || "Not available"}</TableCell>
       <TableCell>
         {channel.last_synced_at
           ? new Date(channel.last_synced_at).toLocaleString()
