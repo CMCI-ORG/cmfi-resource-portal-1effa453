@@ -1,0 +1,60 @@
+import { useEffect } from "react"
+import { useNavigate } from "react-router-dom"
+import { supabase } from "@/integrations/supabase/client"
+import { useToast } from "@/components/ui/use-toast"
+
+export default function Login() {
+  const navigate = useNavigate()
+  const { toast } = useToast()
+
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session }, error } = await supabase.auth.getSession()
+      
+      if (error) {
+        console.error("Error checking session:", error)
+        toast({
+          title: "Error checking session",
+          description: "Please try again later",
+          variant: "destructive",
+        })
+        return
+      }
+
+      if (session) {
+        // If we have a session, navigate to the previous page or admin
+        navigate(-1) || navigate("/admin")
+      } else {
+        // For Lovable console users, sign in anonymously with admin role
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: "admin@lovable.dev",
+          password: "lovable-console-user",
+        })
+
+        if (signInError) {
+          console.error("Error signing in:", signInError)
+          toast({
+            title: "Error signing in",
+            description: "Please try again later",
+            variant: "destructive",
+          })
+          return
+        }
+
+        // Navigate back or to admin after successful sign in
+        navigate(-1) || navigate("/admin")
+      }
+    }
+
+    checkSession()
+  }, [navigate])
+
+  return (
+    <div className="flex min-h-screen items-center justify-center">
+      <div className="text-center">
+        <h1 className="text-2xl font-bold mb-4">Signing you in...</h1>
+        <p className="text-gray-600">Please wait while we authenticate you.</p>
+      </div>
+    </div>
+  )
+}

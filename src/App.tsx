@@ -6,6 +6,7 @@ import Settings from "./pages/admin/Settings"
 import YouTube from "./pages/admin/YouTube"
 import Podcasts from "./pages/admin/Podcasts"
 import Blog from "./pages/admin/Blog"
+import Login from "./pages/Login"
 import { Toaster } from "./components/ui/toaster"
 import "./App.css"
 
@@ -23,6 +24,7 @@ function App() {
           <Route path="/admin/youtube" element={<YouTube />} />
           <Route path="/admin/podcasts" element={<Podcasts />} />
           <Route path="/admin/blog" element={<Blog />} />
+          <Route path="/login" element={<Login />} />
         </Routes>
         <Toaster />
       </Router>

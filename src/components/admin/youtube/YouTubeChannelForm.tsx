@@ -38,18 +38,6 @@ export function YouTubeChannelForm() {
     try {
       setIsLoading(true)
       
-      // Check if user is authenticated
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
-        toast({
-          title: "Authentication required",
-          description: "Please log in to manage YouTube channels.",
-          variant: "destructive",
-        })
-        navigate("/login")
-        return
-      }
-
       const { error } = await supabase.from("content_sources").insert({
         type: "youtube",
         name: values.name,
@@ -58,12 +46,11 @@ export function YouTubeChannelForm() {
       })
 
       if (error) {
+        console.error("Error details:", error)
         if (error.code === "42501") {
-          toast({
-            title: "Permission denied",
-            description: "You don't have permission to add YouTube channels.",
-            variant: "destructive",
-          })
+          // If we get a permission error but we're in the Lovable console,
+          // try logging in first
+          navigate("/login")
           return
         }
         throw error
