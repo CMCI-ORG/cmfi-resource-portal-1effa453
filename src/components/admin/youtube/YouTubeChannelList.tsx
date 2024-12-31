@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react"
 import { supabase } from "@/integrations/supabase/client"
 import { useToast } from "@/components/ui/use-toast"
-import { Button } from "@/components/ui/button"
-import { Trash, Edit, RefreshCw } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { fetchYouTubeVideos } from "@/services/youtube"
+import { YouTubeChannelItem } from "./YouTubeChannelItem"
 
 interface Channel {
   id: string
@@ -141,6 +140,7 @@ export function YouTubeChannelList({ onRefresh }: { onRefresh?: () => void }) {
       })
       
       fetchChannels() // Refresh the list to show updated last_synced_at
+      if (onRefresh) onRefresh() // Refresh the videos list
     } catch (error) {
       console.error("Error syncing videos:", error)
       toast({
@@ -151,6 +151,11 @@ export function YouTubeChannelList({ onRefresh }: { onRefresh?: () => void }) {
     } finally {
       setIsSyncing(null)
     }
+  }
+
+  function handleEdit(channel: Channel) {
+    // TODO: Implement edit functionality
+    console.log("Edit channel:", channel)
   }
 
   if (isLoading) {
@@ -167,38 +172,14 @@ export function YouTubeChannelList({ onRefresh }: { onRefresh?: () => void }) {
       ) : (
         <div className="divide-y">
           {channels.map((channel) => (
-            <div
+            <YouTubeChannelItem
               key={channel.id}
-              className="p-4 flex items-center justify-between"
-            >
-              <div>
-                <h3 className="font-medium">{channel.name}</h3>
-                <p className="text-sm text-gray-500">ID: {channel.source_id}</p>
-                <p className="text-sm text-gray-500">
-                  Last synced:{" "}
-                  {channel.last_synced_at
-                    ? new Date(channel.last_synced_at).toLocaleString()
-                    : "Never"}
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => handleSync(channel)}
-                  disabled={isSyncing === channel.id}
-                >
-                  <RefreshCw className={`h-4 w-4 ${isSyncing === channel.id ? 'animate-spin' : ''}`} />
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="icon"
-                  onClick={() => handleDelete(channel.id)}
-                >
-                  <Trash className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
+              channel={channel}
+              onSync={handleSync}
+              onDelete={handleDelete}
+              onEdit={handleEdit}
+              isSyncing={isSyncing === channel.id}
+            />
           ))}
         </div>
       )}

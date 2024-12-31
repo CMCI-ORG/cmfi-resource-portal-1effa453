@@ -27,8 +27,8 @@ export const fetchYouTubeVideos = async (channelId: string, maxResults = 10) => 
       throw new Error('Failed to fetch YouTube API key');
     }
 
-    if (!secretData) {
-      throw new Error('YouTube API key not found');
+    if (!secretData?.key_value) {
+      throw new Error('YouTube API key not found or empty');
     }
 
     const apiKey = secretData.key_value;
@@ -45,6 +45,10 @@ export const fetchYouTubeVideos = async (channelId: string, maxResults = 10) => 
 
     const data = await response.json();
 
+    if (!data.items?.length) {
+      console.warn('No videos found for channel:', channelId);
+    }
+
     // Store videos in Supabase
     const videos = data.items.map((item: YouTubeVideo) => ({
       type: 'video',
@@ -58,16 +62,18 @@ export const fetchYouTubeVideos = async (channelId: string, maxResults = 10) => 
       metadata: { platform: 'youtube' }
     }));
 
-    const { error: insertError } = await supabase
-      .from('content')
-      .upsert(videos, { 
-        onConflict: 'external_id',
-        ignoreDuplicates: false 
-      });
+    if (videos.length > 0) {
+      const { error: insertError } = await supabase
+        .from('content')
+        .upsert(videos, { 
+          onConflict: 'external_id',
+          ignoreDuplicates: false 
+        });
 
-    if (insertError) {
-      console.error('Error storing videos:', insertError);
-      throw new Error('Failed to store videos in database');
+      if (insertError) {
+        console.error('Error storing videos:', insertError);
+        throw new Error('Failed to store videos in database');
+      }
     }
 
     return videos;
