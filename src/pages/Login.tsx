@@ -1,7 +1,7 @@
 import { useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { supabase } from "@/integrations/supabase/client"
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/hooks/use-toast"
 
 export default function Login() {
   const navigate = useNavigate()
@@ -28,17 +28,22 @@ export default function Login() {
           navigate("/admin")
         }
       } else {
-        // For Lovable console users, sign in anonymously
+        // For Lovable console users, sign in with console user credentials
         const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: "anonymous@lovable.dev",
-          password: "anonymous",
+          email: "console-user@lovable.dev",
+          password: "console-user",
         })
 
         if (signInError) {
-          // If anonymous sign in fails, try creating the anonymous user first
+          // If sign in fails, try creating the console user first
           const { error: signUpError } = await supabase.auth.signUp({
-            email: "anonymous@lovable.dev",
-            password: "anonymous",
+            email: "console-user@lovable.dev",
+            password: "console-user",
+            options: {
+              data: {
+                role: 'admin' // Set admin role in metadata
+              }
+            }
           })
 
           if (signUpError) {
@@ -53,8 +58,8 @@ export default function Login() {
 
           // Try signing in again after creating the user
           const { error: retryError } = await supabase.auth.signInWithPassword({
-            email: "anonymous@lovable.dev",
-            password: "anonymous",
+            email: "console-user@lovable.dev",
+            password: "console-user",
           })
 
           if (retryError) {
