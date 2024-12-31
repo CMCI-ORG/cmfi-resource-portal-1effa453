@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client"
-import type { ContentItem } from "./types"
+import type { ContentItem, ContentInsert } from "./types"
 
 export const createContentSource = async (
   name: string,
@@ -55,25 +55,25 @@ export const parseFeed = async (url: string, sourceId: string, displaySummary: b
 }
 
 export const insertContent = async (items: ContentItem[], sourceName: string) => {
+  const contentToInsert: ContentInsert[] = items.map(item => ({
+    type: "blog",
+    title: item.title,
+    description: item.description,
+    content_url: item.link,
+    thumbnail_url: item.thumbnail,
+    source: sourceName,
+    published_at: item.pubDate,
+    external_id: item.guid,
+    metadata: {
+      categories: item.categories,
+      tags: item.tags,
+      author: item.author,
+    },
+  }))
+
   const { error: insertError } = await supabase
     .from("content")
-    .upsert(
-      items.map(item => ({
-        type: "blog",
-        title: item.title,
-        description: item.description,
-        content_url: item.link,
-        thumbnail_url: item.thumbnail,
-        source: sourceName,
-        published_at: item.pubDate,
-        external_id: item.guid,
-        metadata: {
-          categories: item.categories,
-          tags: item.tags,
-          author: item.author,
-        },
-      }))
-    )
+    .upsert(contentToInsert)
 
   if (insertError) throw insertError
 }

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
+import { supabase } from "@/integrations/supabase/client"
 import type { FeedState } from "./wordpress/types"
 import { validateFeeds } from "./wordpress/validation"
 import { 
