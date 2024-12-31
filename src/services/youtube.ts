@@ -69,6 +69,20 @@ export const fetchYouTubeVideos = async (channelIdentifier: string, maxResults =
     // Convert handle to channel ID if necessary
     const channelId = await getChannelId(channelIdentifier, apiKey);
     console.log('Using channel ID:', channelId);
+
+    // Get the channel name from content_sources to use as source
+    const { data: sourceData, error: sourceError } = await supabase
+      .from("content_sources")
+      .select("name")
+      .eq("source_id", channelIdentifier)
+      .single();
+
+    if (sourceError) {
+      console.error('Error fetching source:', sourceError);
+      throw sourceError;
+    }
+
+    const channelName = sourceData.name;
     
     // Fetch videos from YouTube
     const youtubeUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&maxResults=${maxResults}&order=date&type=video&key=${apiKey}`;
@@ -85,7 +99,7 @@ export const fetchYouTubeVideos = async (channelIdentifier: string, maxResults =
         if (errorData.error.message.includes('API not enabled')) {
           throw new Error(
             'The YouTube Data API is not enabled. Please visit the Google Cloud Console to enable it: ' +
-            'https://console.cloud.google.com/apis/library/youtube.googleapis.com'
+            'https://console.developers.google.com/apis/library/youtube.googleapis.com'
           );
         }
         if (errorData.error.message.includes('quota')) {
@@ -118,7 +132,7 @@ export const fetchYouTubeVideos = async (channelIdentifier: string, maxResults =
       description: item.snippet.description,
       thumbnail_url: item.snippet.thumbnails.high.url,
       content_url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
-      source: item.snippet.channelTitle,
+      source: channelName, // Use the name from content_sources
       published_at: item.snippet.publishedAt,
       external_id: item.id.videoId,
       metadata: { platform: 'youtube' }
