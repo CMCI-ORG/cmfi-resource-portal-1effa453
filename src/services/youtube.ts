@@ -23,6 +23,7 @@ export const fetchYouTubeVideos = async (channelId: string, maxResults = 10) => 
     }
 
     // Fetch API key from Supabase with detailed error logging
+    console.log('Fetching YouTube API key from app_secrets...');
     const { data: secretData, error: secretError } = await supabase
       .from('app_secrets')
       .select('key_value')
@@ -36,11 +37,22 @@ export const fetchYouTubeVideos = async (channelId: string, maxResults = 10) => 
 
     if (!secretData?.key_value) {
       console.error('YouTube API key not found in app_secrets');
+      // Let's verify if the key exists at all
+      const { count, error: countError } = await supabase
+        .from('app_secrets')
+        .select('*', { count: 'exact', head: true })
+        .eq('key_name', 'YOUTUBE_API_KEY');
+      
+      if (countError) {
+        console.error('Error checking for API key existence:', countError);
+      } else {
+        console.log('Number of API key entries found:', count);
+      }
       throw new Error('YouTube API key not found. Please add it in the Supabase settings.');
     }
 
     const apiKey = secretData.key_value;
-    console.log('Making request to YouTube API...');
+    console.log('API key retrieved successfully, making request to YouTube API...');
     
     // Fetch videos from YouTube with error handling
     const youtubeUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&maxResults=${maxResults}&order=date&type=video&key=${apiKey}`;
