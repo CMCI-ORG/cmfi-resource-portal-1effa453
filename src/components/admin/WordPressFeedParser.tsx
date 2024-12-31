@@ -34,6 +34,13 @@ export function WordPressFeedParser() {
 
   const handleError = (error: unknown) => {
     console.error("Error parsing feed:", error)
+    // Log more details about the error
+    if (error instanceof Error) {
+      console.error("Error details:", {
+        message: error.message,
+        stack: error.stack,
+      })
+    }
     toast({
       title: "Error",
       description: error instanceof Error ? error.message : "Failed to parse feed",
@@ -78,16 +85,37 @@ export function WordPressFeedParser() {
     setStatus("Initializing feed parser...")
 
     try {
+      // First check if user is authenticated and has admin rights
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      if (authError) throw new Error("Authentication error: " + authError.message)
+      if (!user) throw new Error("You must be logged in to perform this action")
+
+      // Check if user is admin using the is_admin function
+      const { data: isAdmin, error: adminCheckError } = await supabase
+        .rpc('is_admin', { user_id: user.id })
+      
+      console.log("Admin check result:", { isAdmin, adminCheckError })
+      
+      if (adminCheckError) throw new Error("Failed to verify admin status: " + adminCheckError.message)
+      if (!isAdmin) throw new Error("You must be an admin to manage content sources")
+
       for (let i = 0; i < feeds.length; i++) {
         const feed = feeds[i]
         setProgress((i + 1) * (90 / feeds.length))
         setStatus(`Processing feed ${i + 1} of ${feeds.length}...`)
 
+        console.log("Attempting to insert content source:", {
+          type: "wordpress",
+          name: new URL(feed.url).hostname,
+          source_url: feed.url,
+          feed_url: feed.url,
+        })
+
         // First, add the feed source
         const { data: sourceData, error: sourceError } = await supabase
           .from("content_sources")
           .insert({
-            type: "wordpress",  // Changed to lowercase to match constraint
+            type: "wordpress",
             name: new URL(feed.url).hostname,
             source_url: feed.url,
             source_id: feed.url,
@@ -97,7 +125,10 @@ export function WordPressFeedParser() {
           .select()
           .single()
 
-        if (sourceError) throw sourceError
+        if (sourceError) {
+          console.error("Source insertion error:", sourceError)
+          throw new Error(`Failed to add content source: ${sourceError.message}`)
+        }
 
         // Then fetch and parse the feed
         const { data: feedData, error: feedError } = await supabase.functions.invoke(
