@@ -83,11 +83,11 @@ export function useWordPressFeedParser() {
         setProgress((i + 1) * (90 / feeds.length))
         setStatus(`Processing feed ${i + 1} of ${feeds.length}...`)
 
-        // First, add the feed source with explicit lowercase type
+        // First, add the feed source with explicit type "blog"
         const { data: sourceData, error: sourceError } = await supabase
           .from("content_sources")
           .insert({
-            type: "wordpress",  // Explicitly using lowercase to match constraint
+            type: "blog",  // Changed from "wordpress" to "blog" to match the constraint
             name: new URL(feed.url).hostname,
             source_url: feed.url,
             source_id: feed.url,
@@ -124,7 +124,7 @@ export function useWordPressFeedParser() {
         // Insert blog posts into the database
         const { error: insertError } = await supabase.from("content").insert(
           feedData.items.map((item: any) => ({
-            type: "blog",
+            type: "blog",  // Ensure we're using "blog" type consistently
             title: item.title,
             description: item.description,
             content_url: item.link,
