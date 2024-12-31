@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { useNavigate } from "react-router-dom"
 
 const formSchema = z.object({
   name: z.string().min(1, "Channel name is required"),
@@ -23,6 +24,7 @@ const formSchema = z.object({
 export function YouTubeChannelForm() {
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
+  const navigate = useNavigate()
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -35,6 +37,19 @@ export function YouTubeChannelForm() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       setIsLoading(true)
+      
+      // Check if user is authenticated
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        toast({
+          title: "Authentication required",
+          description: "Please log in to manage YouTube channels.",
+          variant: "destructive",
+        })
+        navigate("/login")
+        return
+      }
+
       const { error } = await supabase.from("content_sources").insert({
         type: "youtube",
         name: values.name,
@@ -42,7 +57,17 @@ export function YouTubeChannelForm() {
         source_url: `https://www.youtube.com/channel/${values.channelId}`,
       })
 
-      if (error) throw error
+      if (error) {
+        if (error.code === "42501") {
+          toast({
+            title: "Permission denied",
+            description: "You don't have permission to add YouTube channels.",
+            variant: "destructive",
+          })
+          return
+        }
+        throw error
+      }
 
       toast({
         title: "Channel added successfully",

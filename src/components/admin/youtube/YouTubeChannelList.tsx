@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client"
 import { useToast } from "@/components/ui/use-toast"
 import { Button } from "@/components/ui/button"
 import { Trash } from "lucide-react"
+import { useNavigate } from "react-router-dom"
 
 interface Channel {
   id: string
@@ -15,10 +16,30 @@ export function YouTubeChannelList() {
   const [channels, setChannels] = useState<Channel[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const { toast } = useToast()
+  const navigate = useNavigate()
 
   useEffect(() => {
-    fetchChannels()
+    checkAuthAndFetchChannels()
   }, [])
+
+  async function checkAuthAndFetchChannels() {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        toast({
+          title: "Authentication required",
+          description: "Please log in to view YouTube channels.",
+          variant: "destructive",
+        })
+        navigate("/login")
+        return
+      }
+      await fetchChannels()
+    } catch (error) {
+      console.error("Auth check error:", error)
+      setIsLoading(false)
+    }
+  }
 
   async function fetchChannels() {
     try {
@@ -28,7 +49,17 @@ export function YouTubeChannelList() {
         .eq("type", "youtube")
         .order("created_at", { ascending: false })
 
-      if (error) throw error
+      if (error) {
+        if (error.code === "42501") {
+          toast({
+            title: "Permission denied",
+            description: "You don't have permission to view YouTube channels.",
+            variant: "destructive",
+          })
+          return
+        }
+        throw error
+      }
 
       setChannels(data)
     } catch (error) {
@@ -45,12 +76,33 @@ export function YouTubeChannelList() {
 
   async function handleDelete(id: string) {
     try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        toast({
+          title: "Authentication required",
+          description: "Please log in to delete YouTube channels.",
+          variant: "destructive",
+        })
+        navigate("/login")
+        return
+      }
+
       const { error } = await supabase
         .from("content_sources")
         .delete()
         .eq("id", id)
 
-      if (error) throw error
+      if (error) {
+        if (error.code === "42501") {
+          toast({
+            title: "Permission denied",
+            description: "You don't have permission to delete YouTube channels.",
+            variant: "destructive",
+          })
+          return
+        }
+        throw error
+      }
 
       setChannels((prev) => prev.filter((channel) => channel.id !== id))
       toast({
