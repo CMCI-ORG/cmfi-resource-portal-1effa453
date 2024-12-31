@@ -7,6 +7,7 @@ import { Plus, Trash2 } from "lucide-react"
 interface FeedFormProps {
   feeds: { name: string; url: string; displaySummary: boolean }[]
   isLoading: boolean
+  error?: string | null
   onAddFeed: () => void
   onRemoveFeed: (index: number) => void
   onUpdateFeed: (index: number, field: string, value: string | boolean) => void
@@ -15,12 +16,19 @@ interface FeedFormProps {
 export function WordPressFeedForm({
   feeds,
   isLoading,
+  error,
   onAddFeed,
   onRemoveFeed,
   onUpdateFeed,
 }: FeedFormProps) {
   return (
     <div className="space-y-4">
+      {error && (
+        <div className="p-4 border border-red-200 bg-red-50 text-red-600 rounded-lg">
+          {error}
+        </div>
+      )}
+      
       {feeds.map((feed, index) => (
         <div key={index} className="space-y-4 p-4 border rounded-lg">
           <div className="space-y-4">

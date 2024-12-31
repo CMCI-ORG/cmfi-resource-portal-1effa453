@@ -16,11 +16,11 @@ export function WordPressFeedParser() {
     isLoading,
     progress,
     status,
+    error,
     addFeed,
     removeFeed,
     updateFeed,
     parseFeeds,
-    error
   } = useWordPressFeedParser()
 
   // Verify admin status

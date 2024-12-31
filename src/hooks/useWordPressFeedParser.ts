@@ -13,6 +13,7 @@ export function useWordPressFeedParser() {
   const [isLoading, setIsLoading] = useState(false)
   const [progress, setProgress] = useState(0)
   const [status, setStatus] = useState("")
+  const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
 
   const validateFeedUrl = (url: string): boolean => {
@@ -32,13 +33,16 @@ export function useWordPressFeedParser() {
     setIsLoading(false)
     setProgress(0)
     setStatus("")
+    setError(null)
   }
 
   const handleError = (error: unknown) => {
+    const errorMessage = error instanceof Error ? error.message : "Failed to parse feed"
+    setError(errorMessage)
     console.error("Error parsing feed:", error)
     toast({
       title: "Error",
-      description: error instanceof Error ? error.message : "Failed to parse feed",
+      description: errorMessage,
       variant: "destructive",
     })
     resetState()
@@ -53,6 +57,7 @@ export function useWordPressFeedParser() {
   }
 
   const parseFeeds = async () => {
+    setError(null)
     const invalidFeeds = feeds.filter(feed => !validateFeedUrl(feed.url) || !validateFeedName(feed.name))
     if (invalidFeeds.length > 0) {
       toast({
@@ -163,6 +168,7 @@ export function useWordPressFeedParser() {
     isLoading,
     progress,
     status,
+    error,
     addFeed,
     removeFeed,
     updateFeed,
