@@ -72,6 +72,39 @@ export type Database = {
         }
         Relationships: []
       }
+      content_sources: {
+        Row: {
+          created_at: string
+          id: string
+          last_synced_at: string | null
+          metadata: Json | null
+          name: string
+          source_id: string
+          source_url: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_synced_at?: string | null
+          metadata?: Json | null
+          name: string
+          source_id: string
+          source_url: string
+          type: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_synced_at?: string | null
+          metadata?: Json | null
+          name?: string
+          source_id?: string
+          source_url?: string
+          type?: string
+        }
+        Relationships: []
+      }
       settings: {
         Row: {
           created_at: string
