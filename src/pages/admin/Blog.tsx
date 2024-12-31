@@ -1,6 +1,7 @@
 import { AdminSidebar } from "@/components/admin/AdminSidebar"
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { WordPressFeedParser } from "@/components/admin/WordPressFeedParser"
+import { WordPressFeedsTable } from "@/components/admin/wordpress/WordPressFeedsTable"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
@@ -37,6 +38,26 @@ export default function Blog() {
     enabled: !isLoading
   })
 
+  // Fetch WordPress feeds
+  const { 
+    data: feeds, 
+    isLoading: isLoadingFeeds,
+    refetch: refetchFeeds
+  } = useQuery({
+    queryKey: ['wordpress-feeds'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('content_sources')
+        .select('*')
+        .eq('type', 'wordpress')
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      return data
+    },
+    enabled: !isLoading
+  })
+
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -70,6 +91,27 @@ export default function Blog() {
       console.log('Latest posts in component:', latestPosts)
     }
   }, [latestPosts, error])
+
+  const handleDeleteFeed = async (id: string) => {
+    const { error } = await supabase
+      .from('content_sources')
+      .delete()
+      .eq('id', id)
+
+    if (error) throw error
+    refetchFeeds()
+  }
+
+  const handleRefreshFeed = async (id: string) => {
+    // Update last_import_attempt to trigger a new import
+    const { error } = await supabase
+      .from('content_sources')
+      .update({ last_import_attempt: null })
+      .eq('id', id)
+
+    if (error) throw error
+    refetchFeeds()
+  }
 
   if (isLoading) {
     return (
@@ -124,7 +166,24 @@ export default function Blog() {
                 )}
               </div>
 
-              <WordPressFeedParser />
+              {/* WordPress Feed Management */}
+              <div className="space-y-4">
+                <h2 className="text-2xl font-semibold">WordPress Feeds</h2>
+                <WordPressFeedParser onSuccess={refetchFeeds} />
+                
+                {isLoadingFeeds ? (
+                  <div className="flex justify-center p-4">
+                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  </div>
+                ) : (
+                  <WordPressFeedsTable
+                    feeds={feeds || []}
+                    onDelete={handleDeleteFeed}
+                    onRefresh={handleRefreshFeed}
+                    isLoading={isLoadingFeeds}
+                  />
+                )}
+              </div>
             </div>
           </main>
         </div>

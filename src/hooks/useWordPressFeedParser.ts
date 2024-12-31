@@ -12,7 +12,11 @@ import {
   deleteSource
 } from "./wordpress/feedManagement"
 
-export function useWordPressFeedParser() {
+interface UseWordPressFeedParserProps {
+  onSuccess?: () => void
+}
+
+export function useWordPressFeedParser({ onSuccess }: UseWordPressFeedParserProps = {}) {
   const [feeds, setFeeds] = useState<FeedState[]>([{ name: "", url: "", displaySummary: true }])
   const [existingSources, setExistingSources] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -115,6 +119,9 @@ export function useWordPressFeedParser() {
       // Refresh existing sources
       await fetchExistingSources()
       setFeeds([{ name: "", url: "", displaySummary: true }])
+      
+      // Call onSuccess callback if provided
+      onSuccess?.()
     } catch (error) {
       handleError(error)
     } finally {
