@@ -28,12 +28,20 @@ export const createContentSource = async (
 
 export const checkRateLimit = async (sourceId: string) => {
   const { data: isAllowed, error: rateLimitError } = await supabase
-    .rpc('check_import_rate_limit', { source_id: sourceId })
+    .rpc('check_import_rate_limit', {
+      source_id: sourceId
+    })
 
-  if (rateLimitError) throw new Error("Failed to check rate limit: " + rateLimitError.message)
+  if (rateLimitError) {
+    console.error("Rate limit check error:", rateLimitError)
+    throw new Error("Failed to check rate limit: " + rateLimitError.message)
+  }
+  
   if (!isAllowed) {
     throw new Error("Rate limit exceeded. Please wait 15 minutes between imports.")
   }
+
+  return isAllowed
 }
 
 export const parseFeed = async (url: string, sourceId: string, displaySummary: boolean) => {
