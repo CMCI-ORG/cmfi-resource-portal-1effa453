@@ -22,30 +22,52 @@ export default function Login() {
       }
 
       if (session) {
-        // If we have a session, try to go back or default to admin
         try {
           navigate(-1)
         } catch {
           navigate("/admin")
         }
       } else {
-        // For Lovable console users, sign in with admin credentials
+        // For Lovable console users, sign in anonymously
         const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: "admin@lovable.dev",
-          password: "lovable",
+          email: "anonymous@lovable.dev",
+          password: "anonymous",
         })
 
         if (signInError) {
-          console.error("Error signing in:", signInError)
-          toast({
-            title: "Error signing in",
-            description: signInError.message,
-            variant: "destructive",
+          // If anonymous sign in fails, try creating the anonymous user first
+          const { error: signUpError } = await supabase.auth.signUp({
+            email: "anonymous@lovable.dev",
+            password: "anonymous",
           })
-          return
+
+          if (signUpError) {
+            console.error("Error signing up:", signUpError)
+            toast({
+              title: "Error signing up",
+              description: signUpError.message,
+              variant: "destructive",
+            })
+            return
+          }
+
+          // Try signing in again after creating the user
+          const { error: retryError } = await supabase.auth.signInWithPassword({
+            email: "anonymous@lovable.dev",
+            password: "anonymous",
+          })
+
+          if (retryError) {
+            console.error("Error signing in:", retryError)
+            toast({
+              title: "Error signing in",
+              description: retryError.message,
+              variant: "destructive",
+            })
+            return
+          }
         }
 
-        // Try to go back or default to admin after successful sign in
         try {
           navigate(-1)
         } catch {
