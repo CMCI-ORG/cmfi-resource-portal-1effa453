@@ -35,6 +35,18 @@ export default function Login() {
         })
 
         if (signInError) {
+          console.error("Sign in error:", signInError)
+          
+          // Show specific error message for email confirmation
+          if (signInError.message.includes("Email not confirmed")) {
+            toast({
+              title: "Email not confirmed",
+              description: "Please check your email for a confirmation link or disable email confirmation in Supabase settings for development.",
+              variant: "destructive",
+            })
+            return
+          }
+
           // If sign in fails, try creating the console user first
           const { error: signUpError } = await supabase.auth.signUp({
             email: "gordonfru@gmail.com",
@@ -48,6 +60,17 @@ export default function Login() {
 
           if (signUpError) {
             console.error("Error signing up:", signUpError)
+            
+            // Handle rate limiting error
+            if (signUpError.message.includes("rate limit")) {
+              toast({
+                title: "Too many attempts",
+                description: "Please wait a minute before trying again",
+                variant: "destructive",
+              })
+              return
+            }
+
             toast({
               title: "Error signing up",
               description: signUpError.message,
