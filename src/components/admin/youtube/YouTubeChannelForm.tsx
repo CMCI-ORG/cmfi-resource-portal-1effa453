@@ -38,6 +38,29 @@ export function YouTubeChannelForm() {
     try {
       setIsLoading(true)
       
+      // First check if the channel already exists
+      const { data: existingChannel, error: checkError } = await supabase
+        .from("content_sources")
+        .select("id")
+        .eq("type", "youtube")
+        .eq("source_id", values.channelId)
+        .single()
+
+      if (checkError && checkError.code !== "PGRST116") {
+        // PGRST116 means no rows returned, which is what we want
+        console.error("Error checking existing channel:", checkError)
+        throw checkError
+      }
+
+      if (existingChannel) {
+        toast({
+          title: "Channel already exists",
+          description: "This YouTube channel has already been added to your sources.",
+          variant: "destructive",
+        })
+        return
+      }
+
       const { error } = await supabase.from("content_sources").insert({
         type: "youtube",
         name: values.name,
@@ -48,9 +71,15 @@ export function YouTubeChannelForm() {
       if (error) {
         console.error("Error details:", error)
         if (error.code === "42501") {
-          // If we get a permission error but we're in the Lovable console,
-          // try logging in first
           navigate("/login")
+          return
+        }
+        if (error.code === "23505") {
+          toast({
+            title: "Channel already exists",
+            description: "This YouTube channel has already been added to your sources.",
+            variant: "destructive",
+          })
           return
         }
         throw error
