@@ -11,6 +11,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -64,7 +65,7 @@ export function YouTubeChannelForm() {
         type: "youtube",
         name: values.name,
         source_id: values.channelId,
-        source_url: `https://www.youtube.com/channel/${values.channelId}`,
+        source_url: `https://www.youtube.com/${values.channelId.startsWith('@') ? values.channelId : `channel/${values.channelId}`}`,
       })
 
       if (error) {
@@ -127,8 +128,11 @@ export function YouTubeChannelForm() {
               <FormItem>
                 <FormLabel>Channel ID</FormLabel>
                 <FormControl>
-                  <Input placeholder="Enter channel ID" {...field} />
+                  <Input placeholder="Enter @handle or channel ID" {...field} />
                 </FormControl>
+                <FormDescription>
+                  Enter either the channel's @handle (e.g., @channelname) or the channel ID (e.g., UCxxxxxxxxxx)
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
