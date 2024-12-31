@@ -30,15 +30,15 @@ export default function Login() {
       } else {
         // For Lovable console users, sign in with console user credentials
         const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: "console-user@lovable.dev",
-          password: "console-user",
+          email: "gordonfru@gmail.com",
+          password: "gordonfru@gmail.com",
         })
 
         if (signInError) {
           // If sign in fails, try creating the console user first
           const { error: signUpError } = await supabase.auth.signUp({
-            email: "console-user@lovable.dev",
-            password: "console-user",
+            email: "gordonfru@gmail.com",
+            password: "gordonfru@gmail.com",
             options: {
               data: {
                 role: 'admin' // Set admin role in metadata
@@ -58,8 +58,8 @@ export default function Login() {
 
           // Try signing in again after creating the user
           const { error: retryError } = await supabase.auth.signInWithPassword({
-            email: "console-user@lovable.dev",
-            password: "console-user",
+            email: "gordonfru@gmail.com",
+            password: "gordonfru@gmail.com",
           })
 
           if (retryError) {
