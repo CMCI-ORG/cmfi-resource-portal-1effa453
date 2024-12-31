@@ -15,6 +15,8 @@ interface YouTubeVideo {
 
 export const fetchYouTubeVideos = async (channelId: string, maxResults = 10) => {
   try {
+    console.log('Fetching videos for channel:', channelId);
+    
     // Fetch API key from Supabase
     const { data: secretData, error: secretError } = await supabase
       .from('app_secrets')
@@ -28,10 +30,12 @@ export const fetchYouTubeVideos = async (channelId: string, maxResults = 10) => 
     }
 
     if (!secretData?.key_value) {
+      console.error('YouTube API key not found in app_secrets');
       throw new Error('YouTube API key not found or empty');
     }
 
     const apiKey = secretData.key_value;
+    console.log('Making request to YouTube API...');
     
     // Fetch videos from YouTube
     const response = await fetch(
@@ -40,13 +44,16 @@ export const fetchYouTubeVideos = async (channelId: string, maxResults = 10) => 
 
     if (!response.ok) {
       const errorData = await response.json();
+      console.error('YouTube API error:', errorData);
       throw new Error(errorData.error?.message || 'YouTube API request failed');
     }
 
     const data = await response.json();
+    console.log(`Found ${data.items?.length || 0} videos`);
 
     if (!data.items?.length) {
       console.warn('No videos found for channel:', channelId);
+      return [];
     }
 
     // Store videos in Supabase
@@ -62,20 +69,21 @@ export const fetchYouTubeVideos = async (channelId: string, maxResults = 10) => 
       metadata: { platform: 'youtube' }
     }));
 
-    if (videos.length > 0) {
-      const { error: insertError } = await supabase
-        .from('content')
-        .upsert(videos, { 
-          onConflict: 'external_id',
-          ignoreDuplicates: false 
-        });
+    console.log(`Storing ${videos.length} videos in database...`);
 
-      if (insertError) {
-        console.error('Error storing videos:', insertError);
-        throw new Error('Failed to store videos in database');
-      }
+    const { error: insertError } = await supabase
+      .from('content')
+      .upsert(videos, { 
+        onConflict: 'external_id',
+        ignoreDuplicates: false 
+      });
+
+    if (insertError) {
+      console.error('Error storing videos:', insertError);
+      throw new Error('Failed to store videos in database');
     }
 
+    console.log('Videos successfully stored');
     return videos;
   } catch (error) {
     console.error('Error in fetchYouTubeVideos:', error);

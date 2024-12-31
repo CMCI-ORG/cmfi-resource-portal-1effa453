@@ -5,6 +5,7 @@ import { YouTubeChannelForm } from "@/components/admin/youtube/YouTubeChannelFor
 import { YouTubeChannelList } from "@/components/admin/youtube/YouTubeChannelList"
 import ContentCard from "@/components/ContentCard"
 import { supabase } from "@/integrations/supabase/client"
+import { useToast } from "@/components/ui/use-toast"
 
 interface Video {
   id: string
@@ -19,9 +20,11 @@ interface Video {
 export default function YouTube() {
   const [videos, setVideos] = useState<Video[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const { toast } = useToast()
 
   const fetchVideos = async () => {
     try {
+      console.log('Fetching videos from database...');
       const { data, error } = await supabase
         .from("content")
         .select("*")
@@ -29,10 +32,20 @@ export default function YouTube() {
         .order("published_at", { ascending: false })
         .limit(12)
 
-      if (error) throw error
-      setVideos(data)
+      if (error) {
+        console.error('Error fetching videos:', error);
+        throw error;
+      }
+      
+      console.log(`Found ${data?.length || 0} videos`);
+      setVideos(data || [])
     } catch (error) {
       console.error("Error fetching videos:", error)
+      toast({
+        title: "Error",
+        description: "Failed to fetch videos. Please try again.",
+        variant: "destructive",
+      })
     } finally {
       setIsLoading(false)
     }
@@ -43,6 +56,7 @@ export default function YouTube() {
   }, [])
 
   const handleRefresh = () => {
+    console.log('Refreshing videos list...');
     fetchVideos()
   }
 
@@ -61,6 +75,8 @@ export default function YouTube() {
                 <h2 className="text-2xl font-semibold mb-4">Recent Videos</h2>
                 {isLoading ? (
                   <p>Loading videos...</p>
+                ) : videos.length === 0 ? (
+                  <p className="text-gray-500">No videos found. Try adding a channel and syncing it.</p>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {videos.map((video) => (
