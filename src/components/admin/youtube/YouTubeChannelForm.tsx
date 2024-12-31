@@ -38,16 +38,15 @@ export function YouTubeChannelForm() {
     try {
       setIsLoading(true)
       
-      // First check if the channel already exists
+      // Check if the channel already exists using maybeSingle() instead of single()
       const { data: existingChannel, error: checkError } = await supabase
         .from("content_sources")
         .select("id")
         .eq("type", "youtube")
         .eq("source_id", values.channelId)
-        .single()
+        .maybeSingle()
 
-      if (checkError && checkError.code !== "PGRST116") {
-        // PGRST116 means no rows returned, which is what we want
+      if (checkError) {
         console.error("Error checking existing channel:", checkError)
         throw checkError
       }
