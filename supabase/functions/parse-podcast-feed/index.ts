@@ -31,8 +31,9 @@ serve(async (req) => {
 
     console.log("Fetching podcast feed from:", url)
     
+    // Reduce timeout to 5 seconds to prevent function timeout
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 10000) // Reduced to 10 second timeout
+    const timeout = setTimeout(() => controller.abort(), 5000)
     
     try {
       const response = await fetch(url, { 
@@ -51,13 +52,14 @@ serve(async (req) => {
       
       const xmlText = await response.text()
       
+      // Stricter size limit (500KB)
+      if (xmlText.length > 500000) {
+        throw new Error("Feed too large: Maximum size is 500KB")
+      }
+
       // Basic XML validation
       if (!xmlText.includes('<rss') && !xmlText.includes('<feed')) {
         throw new Error("Invalid feed format: Not a valid RSS/XML feed")
-      }
-
-      if (xmlText.length > 1000000) { // 1MB limit
-        throw new Error("Feed too large: Maximum size is 1MB")
       }
       
       console.log("Parsing XML feed...")
@@ -72,12 +74,14 @@ serve(async (req) => {
         throw new Error("Invalid RSS feed format: Missing channel or items")
       }
 
-      // Process only the first 25 items to prevent resource exhaustion
-      const items = channel.item.slice(0, 25).map((item: any) => {
-        console.log("Processing item:", item.title?.[0])
+      // Process only the first 10 items to reduce memory usage
+      const items = channel.item.slice(0, 10).map((item: any) => {
+        const title = item.title?.[0] || ""
+        console.log("Processing item:", title)
+        
         return {
-          title: item.title?.[0] || "",
-          description: item.description?.[0] || "",
+          title,
+          description: item.description?.[0]?.slice(0, 1000) || "", // Limit description length
           url: item.enclosure?.[0]?.["@url"] || "",
           guid: item.guid?.[0] || "",
           pubDate: new Date(item.pubDate?.[0] || "").toISOString(),
