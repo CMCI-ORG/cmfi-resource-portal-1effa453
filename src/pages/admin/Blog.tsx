@@ -14,11 +14,11 @@ export default function Blog() {
   const navigate = useNavigate()
   const [isLoading, setIsLoading] = useState(true)
 
-  // Fetch latest blog posts with debugging
+  // Fetch latest blog posts with enhanced debugging
   const { data: latestPosts, isLoading: isLoadingPosts, error } = useQuery({
     queryKey: ['latest-blog-posts'],
     queryFn: async () => {
-      console.log('Fetching latest blog posts...')
+      console.log('Starting to fetch blog posts...')
       const { data, error } = await supabase
         .from('content')
         .select('*')
@@ -27,18 +27,17 @@ export default function Blog() {
         .limit(3)
 
       if (error) {
-        console.error('Error fetching blog posts:', error)
+        console.error('Supabase error fetching blog posts:', error)
         throw error
       }
       
-      console.log('Fetched blog posts:', data)
+      console.log('Successfully fetched blog posts:', data)
       return data
     },
-    // Ensure the query runs after authentication check
     enabled: !isLoading
   })
 
-  // Fetch WordPress feeds
+  // Fetch WordPress feeds with debugging
   const { 
     data: feeds, 
     isLoading: isLoadingFeeds,
@@ -46,13 +45,19 @@ export default function Blog() {
   } = useQuery({
     queryKey: ['wordpress-feeds'],
     queryFn: async () => {
+      console.log('Fetching WordPress feeds...')
       const { data, error } = await supabase
         .from('content_sources')
         .select('*')
         .eq('type', 'wordpress')
         .order('created_at', { ascending: false })
 
-      if (error) throw error
+      if (error) {
+        console.error('Error fetching WordPress feeds:', error)
+        throw error
+      }
+
+      console.log('Successfully fetched WordPress feeds:', data)
       return data
     },
     enabled: !isLoading
@@ -60,9 +65,11 @@ export default function Blog() {
 
   useEffect(() => {
     const checkAuth = async () => {
+      console.log('Checking authentication...')
       try {
         const { data: { user }, error } = await supabase.auth.getUser()
         if (error || !user) {
+          console.log('No authenticated user found, redirecting to login')
           navigate("/login")
           return
         }
@@ -70,10 +77,17 @@ export default function Blog() {
         const { data: isAdmin, error: adminError } = await supabase
           .rpc('is_admin', { user_id: user.id })
         
-        if (adminError || !isAdmin) {
+        if (adminError) {
+          console.error('Error checking admin status:', adminError)
+        }
+        
+        if (!isAdmin) {
+          console.log('User is not an admin, redirecting to home')
           navigate("/")
           return
         }
+
+        console.log('Authentication check complete - user is admin')
       } finally {
         setIsLoading(false)
       }
@@ -82,35 +96,56 @@ export default function Blog() {
     checkAuth()
   }, [navigate])
 
-  // Debug output
+  // Debug output for query state
   useEffect(() => {
-    if (error) {
-      console.error('Query error:', error)
-    }
-    if (latestPosts) {
-      console.log('Latest posts in component:', latestPosts)
-    }
-  }, [latestPosts, error])
+    console.log('Query state:', {
+      isLoading,
+      isLoadingPosts,
+      hasError: !!error,
+      errorDetails: error,
+      postsCount: latestPosts?.length,
+      feedsCount: feeds?.length
+    })
+  }, [isLoading, isLoadingPosts, error, latestPosts, feeds])
 
   const handleDeleteFeed = async (id: string) => {
-    const { error } = await supabase
-      .from('content_sources')
-      .delete()
-      .eq('id', id)
+    console.log('Attempting to delete feed:', id)
+    try {
+      const { error } = await supabase
+        .from('content_sources')
+        .delete()
+        .eq('id', id)
 
-    if (error) throw error
-    refetchFeeds()
+      if (error) {
+        console.error('Error deleting feed:', error)
+        throw error
+      }
+      console.log('Successfully deleted feed:', id)
+      refetchFeeds()
+    } catch (err) {
+      console.error('Failed to delete feed:', err)
+      throw err
+    }
   }
 
   const handleRefreshFeed = async (id: string) => {
-    // Update last_import_attempt to trigger a new import
-    const { error } = await supabase
-      .from('content_sources')
-      .update({ last_import_attempt: null })
-      .eq('id', id)
+    console.log('Attempting to refresh feed:', id)
+    try {
+      const { error } = await supabase
+        .from('content_sources')
+        .update({ last_import_attempt: null })
+        .eq('id', id)
 
-    if (error) throw error
-    refetchFeeds()
+      if (error) {
+        console.error('Error refreshing feed:', error)
+        throw error
+      }
+      console.log('Successfully refreshed feed:', id)
+      refetchFeeds()
+    } catch (err) {
+      console.error('Failed to refresh feed:', err)
+      throw err
+    }
   }
 
   if (isLoading) {
