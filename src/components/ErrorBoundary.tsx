@@ -1,7 +1,7 @@
 import React, { Component, ErrorInfo, ReactNode } from "react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
-import { RefreshCw } from "lucide-react"
+import { RefreshCw, Wifi, AlertCircle } from "lucide-react"
 
 interface Props {
   children: ReactNode
@@ -31,17 +31,49 @@ export class ErrorBoundary extends Component<Props, State> {
     this.setState({ hasError: false, error: null })
   }
 
+  private isNetworkError = (error: Error): boolean => {
+    return (
+      error instanceof TypeError && 
+      (error.message.includes('network') || 
+       error.message.includes('failed to fetch') ||
+       error.message.includes('Network request failed'))
+    )
+  }
+
   public render() {
     if (this.state.hasError) {
       if (this.props.fallback) {
         return this.props.fallback
       }
 
+      const isNetworkError = this.state.error && this.isNetworkError(this.state.error)
+
       return (
         <Alert variant="destructive" className="my-4">
-          <AlertTitle>Something went wrong</AlertTitle>
+          <AlertTitle className="flex items-center gap-2">
+            {isNetworkError ? (
+              <>
+                <Wifi className="h-4 w-4" />
+                Network Error
+              </>
+            ) : (
+              <>
+                <AlertCircle className="h-4 w-4" />
+                Something went wrong
+              </>
+            )}
+          </AlertTitle>
           <AlertDescription className="space-y-4">
-            <p>An error occurred while loading this component.</p>
+            <p>
+              {isNetworkError
+                ? "Unable to connect to the server. Please check your internet connection."
+                : "An error occurred while loading this component."}
+            </p>
+            {this.state.error && (
+              <p className="text-sm opacity-80">
+                {this.state.error.message}
+              </p>
+            )}
             <Button
               variant="outline"
               size="sm"
