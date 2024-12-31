@@ -1,14 +1,12 @@
 import { useState } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
-import { supabase } from "@/integrations/supabase/client"
-import { Loader2, Plus, Trash2 } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
-import { Switch } from "@/components/ui/switch"
-import { Label } from "@/components/ui/label"
+import { supabase } from "@/integrations/supabase/client"
+import { WordPressFeedForm } from "./wordpress/WordPressFeedForm"
+import { WordPressFeedProgress } from "./wordpress/WordPressFeedProgress"
 
 export function WordPressFeedParser() {
   const [feeds, setFeeds] = useState<{ url: string; displaySummary: boolean }[]>([
@@ -89,7 +87,7 @@ export function WordPressFeedParser() {
         const { data: sourceData, error: sourceError } = await supabase
           .from("content_sources")
           .insert({
-            type: "wordpress",
+            type: "WordPress",  // Changed to uppercase WordPress
             name: new URL(feed.url).hostname,
             source_url: feed.url,
             source_id: feed.url,
@@ -164,69 +162,25 @@ export function WordPressFeedParser() {
           <CardTitle>Import WordPress Blogs</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {feeds.map((feed, index) => (
-            <div key={index} className="space-y-4">
-              <div className="flex gap-4">
-                <Input
-                  placeholder="Enter WordPress RSS feed URL"
-                  value={feed.url}
-                  onChange={(e) => updateFeed(index, e.target.value)}
-                  className="flex-1"
-                  disabled={isLoading}
-                />
-                {feeds.length > 1 && (
-                  <Button
-                    variant="destructive"
-                    size="icon"
-                    onClick={() => removeFeed(index)}
-                    disabled={isLoading}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id={`display-summary-${index}`}
-                  checked={feed.displaySummary}
-                  onCheckedChange={(checked) => updateDisplaySummary(index, checked)}
-                  disabled={isLoading}
-                />
-                <Label htmlFor={`display-summary-${index}`}>
-                  Display article summary
-                </Label>
-              </div>
-            </div>
-          ))}
+          <WordPressFeedForm
+            feeds={feeds}
+            isLoading={isLoading}
+            onAddFeed={addFeed}
+            onRemoveFeed={removeFeed}
+            onUpdateFeed={updateFeed}
+            onUpdateDisplaySummary={updateDisplaySummary}
+          />
           
-          <div className="flex gap-4">
-            <Button
-              variant="outline"
-              onClick={addFeed}
-              disabled={isLoading}
-              className="w-full"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Add Another Feed
-            </Button>
-            <Button 
-              onClick={parseFeeds} 
-              disabled={isLoading}
-              className="w-full"
-            >
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Import
-            </Button>
-          </div>
+          <Button 
+            onClick={parseFeeds} 
+            disabled={isLoading}
+            className="w-full"
+          >
+            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Import
+          </Button>
 
-          {isLoading && (
-            <div className="space-y-2">
-              <Progress value={progress} className="h-2" />
-              <p className="text-sm text-gray-500 text-center animate-pulse">
-                {status}
-              </p>
-            </div>
-          )}
+          {isLoading && <WordPressFeedProgress progress={progress} status={status} />}
         </CardContent>
       </Card>
     </ErrorBoundary>
