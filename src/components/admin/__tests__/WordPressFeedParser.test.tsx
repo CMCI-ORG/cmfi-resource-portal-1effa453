@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import { WordPressFeedParser } from "../WordPressFeedParser"
 import { supabase } from "@/integrations/supabase/client"
 import { useToast } from "@/hooks/use-toast"
+import { Mock } from "vitest"
 
 // Mock hooks
 vi.mock("@/hooks/use-toast", () => ({
@@ -36,8 +37,7 @@ describe("WordPressFeedParser", () => {
   
   beforeEach(() => {
     vi.clearAllMocks()
-    // Fix: Use proper type assertion for vitest mock
-    ;(useToast as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => ({
+    ;(useToast as unknown as Mock).mockImplementation(() => ({
       toast: mockToast,
     }))
   })
