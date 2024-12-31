@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { supabase } from "@/integrations/supabase/client"
 import { Loader2 } from "lucide-react"
+import { ErrorBoundary } from "@/components/ErrorBoundary"
 
 export function PodcastFeedParser() {
   const [feedUrl, setFeedUrl] = useState("")
@@ -14,11 +15,45 @@ export function PodcastFeedParser() {
   const [status, setStatus] = useState("")
   const { toast } = useToast()
 
+  const validateFeedUrl = (url: string): boolean => {
+    try {
+      new URL(url)
+      return url.startsWith('http') || url.startsWith('https')
+    } catch {
+      return false
+    }
+  }
+
+  const resetState = () => {
+    setIsLoading(false)
+    setProgress(0)
+    setStatus("")
+  }
+
+  const handleError = (error: unknown) => {
+    console.error("Error parsing feed:", error)
+    toast({
+      title: "Error",
+      description: error instanceof Error ? error.message : "Failed to parse feed",
+      variant: "destructive",
+    })
+    resetState()
+  }
+
   const parseFeed = async () => {
     if (!feedUrl) {
       toast({
         title: "Error",
         description: "Please enter a feed URL",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (!validateFeedUrl(feedUrl)) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid URL",
         variant: "destructive",
       })
       return
@@ -73,22 +108,15 @@ export function PodcastFeedParser() {
         description: "Podcast feed parsed and episodes imported successfully",
       })
     } catch (error) {
-      console.error("Error parsing feed:", error)
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to parse feed",
-        variant: "destructive",
-      })
+      handleError(error)
     } finally {
       setTimeout(() => {
-        setIsLoading(false)
-        setProgress(0)
-        setStatus("")
-      }, 2000) // Reset after 2 seconds to show completion
+        resetState()
+      }, 2000)
     }
   }
 
-  return (
+  const PodcastFeedForm = () => (
     <Card>
       <CardHeader>
         <CardTitle>Import SoundCloud Podcast</CardTitle>
@@ -101,21 +129,32 @@ export function PodcastFeedParser() {
             onChange={(e) => setFeedUrl(e.target.value)}
             className="flex-1"
             disabled={isLoading}
+            data-testid="feed-url-input"
           />
-          <Button onClick={parseFeed} disabled={isLoading}>
+          <Button 
+            onClick={parseFeed} 
+            disabled={isLoading}
+            data-testid="import-button"
+          >
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Import
           </Button>
         </div>
         {isLoading && (
           <div className="space-y-2">
-            <Progress value={progress} className="h-2" />
-            <p className="text-sm text-gray-500 text-center animate-pulse">
+            <Progress value={progress} className="h-2" data-testid="progress-bar" />
+            <p className="text-sm text-gray-500 text-center animate-pulse" data-testid="status-message">
               {status}
             </p>
           </div>
         )}
       </CardContent>
     </Card>
+  )
+
+  return (
+    <ErrorBoundary>
+      <PodcastFeedForm />
+    </ErrorBoundary>
   )
 }
