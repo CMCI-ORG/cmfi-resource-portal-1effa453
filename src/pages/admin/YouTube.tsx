@@ -27,40 +27,63 @@ export default function YouTube() {
   const fetchVideos = async () => {
     try {
       console.log('Fetching videos from database...');
+      
+      // First, get the list of added channel names
+      const { data: sources, error: sourcesError } = await supabase
+        .from("content_sources")
+        .select("name")
+        .eq("type", "youtube");
+
+      if (sourcesError) {
+        console.error('Error fetching sources:', sourcesError);
+        throw sourcesError;
+      }
+
+      // Extract channel names
+      const channelNames = sources?.map(source => source.name) || [];
+      
+      if (channelNames.length === 0) {
+        console.log('No channels added yet');
+        setVideos([]);
+        return;
+      }
+
+      // Fetch videos only from these channels
       const { data, error } = await supabase
         .from("content")
         .select("*")
         .eq("type", "video")
+        .in("source", channelNames)
         .order("published_at", { ascending: false })
-        .limit(12)
+        .limit(12);
 
       if (error) {
         console.error('Error fetching videos:', error);
         throw error;
       }
       
-      console.log(`Found ${data?.length || 0} videos`);
-      setVideos(data || [])
+      console.log(`Found ${data?.length || 0} videos from added channels`);
+      setVideos(data || []);
     } catch (error) {
-      console.error("Error fetching videos:", error)
+      console.error("Error fetching videos:", error);
       toast({
         title: "Error",
         description: "Failed to fetch videos. Please try again.",
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    fetchVideos()
-  }, [])
+    fetchVideos();
+  }, []);
 
   const handleRefresh = () => {
     console.log('Refreshing videos list...');
-    fetchVideos()
-  }
+    fetchVideos();
+  };
 
   return (
     <SidebarProvider>
@@ -109,5 +132,5 @@ export default function YouTube() {
         </main>
       </div>
     </SidebarProvider>
-  )
+  );
 }
