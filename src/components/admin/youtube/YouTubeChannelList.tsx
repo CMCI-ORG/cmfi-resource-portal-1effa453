@@ -2,8 +2,9 @@ import { useEffect, useState } from "react"
 import { supabase } from "@/integrations/supabase/client"
 import { useToast } from "@/components/ui/use-toast"
 import { Button } from "@/components/ui/button"
-import { Trash } from "lucide-react"
+import { Trash, Edit, RefreshCw } from "lucide-react"
 import { useNavigate } from "react-router-dom"
+import { fetchYouTubeVideos } from "@/services/youtube"
 
 interface Channel {
   id: string
@@ -12,9 +13,10 @@ interface Channel {
   last_synced_at: string | null
 }
 
-export function YouTubeChannelList() {
+export function YouTubeChannelList({ onRefresh }: { onRefresh?: () => void }) {
   const [channels, setChannels] = useState<Channel[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isSyncing, setIsSyncing] = useState<string | null>(null)
   const { toast } = useToast()
   const navigate = useNavigate()
 
@@ -109,6 +111,7 @@ export function YouTubeChannelList() {
         title: "Channel deleted",
         description: "The YouTube channel has been removed from your sources.",
       })
+      if (onRefresh) onRefresh()
     } catch (error) {
       console.error("Error deleting channel:", error)
       toast({
@@ -116,6 +119,37 @@ export function YouTubeChannelList() {
         description: "There was a problem deleting the YouTube channel.",
         variant: "destructive",
       })
+    }
+  }
+
+  async function handleSync(channel: Channel) {
+    try {
+      setIsSyncing(channel.id)
+      await fetchYouTubeVideos(channel.source_id)
+      
+      // Update last_synced_at
+      const { error } = await supabase
+        .from("content_sources")
+        .update({ last_synced_at: new Date().toISOString() })
+        .eq("id", channel.id)
+
+      if (error) throw error
+
+      toast({
+        title: "Channel synced",
+        description: "Videos have been updated successfully.",
+      })
+      
+      fetchChannels() // Refresh the list to show updated last_synced_at
+    } catch (error) {
+      console.error("Error syncing videos:", error)
+      toast({
+        title: "Sync failed",
+        description: "There was a problem syncing the YouTube videos.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSyncing(null)
     }
   }
 
@@ -147,13 +181,23 @@ export function YouTubeChannelList() {
                     : "Never"}
                 </p>
               </div>
-              <Button
-                variant="destructive"
-                size="icon"
-                onClick={() => handleDelete(channel.id)}
-              >
-                <Trash className="h-4 w-4" />
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => handleSync(channel)}
+                  disabled={isSyncing === channel.id}
+                >
+                  <RefreshCw className={`h-4 w-4 ${isSyncing === channel.id ? 'animate-spin' : ''}`} />
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  onClick={() => handleDelete(channel.id)}
+                >
+                  <Trash className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           ))}
         </div>

@@ -16,13 +16,14 @@ import {
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { useNavigate } from "react-router-dom"
+import { fetchYouTubeVideos } from "@/services/youtube"
 
 const formSchema = z.object({
   name: z.string().min(1, "Channel name is required"),
   channelId: z.string().min(1, "Channel ID is required"),
 })
 
-export function YouTubeChannelForm() {
+export function YouTubeChannelForm({ onSuccess }: { onSuccess?: () => void }) {
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
   const navigate = useNavigate()
@@ -39,7 +40,7 @@ export function YouTubeChannelForm() {
     try {
       setIsLoading(true)
       
-      // Check if the channel already exists using maybeSingle() instead of single()
+      // Check if the channel already exists
       const { data: existingChannel, error: checkError } = await supabase
         .from("content_sources")
         .select("id")
@@ -90,7 +91,11 @@ export function YouTubeChannelForm() {
         description: "The YouTube channel has been added to your sources.",
       })
 
+      // Fetch videos for the new channel
+      await fetchYouTubeVideos(values.channelId)
+
       form.reset()
+      if (onSuccess) onSuccess()
     } catch (error) {
       console.error("Error adding channel:", error)
       toast({
