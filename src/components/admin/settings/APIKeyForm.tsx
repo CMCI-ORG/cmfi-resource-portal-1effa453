@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -30,6 +30,33 @@ export function APIKeyForm() {
     },
   })
 
+  useEffect(() => {
+    async function fetchApiKey() {
+      try {
+        const { data, error } = await supabase
+          .from("app_secrets")
+          .select("key_value")
+          .eq("key_name", "YOUTUBE_API_KEY")
+          .maybeSingle()
+
+        if (error) throw error
+
+        if (data) {
+          form.setValue("key_value", data.key_value)
+        }
+      } catch (error) {
+        console.error("Error fetching API key:", error)
+        toast({
+          title: "Error",
+          description: "Failed to fetch the saved API key.",
+          variant: "destructive",
+        })
+      }
+    }
+
+    fetchApiKey()
+  }, [form, toast])
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       setIsLoading(true)
@@ -49,8 +76,6 @@ export function APIKeyForm() {
         title: "API Key Updated",
         description: "The YouTube API key has been successfully updated.",
       })
-
-      form.reset()
     } catch (error) {
       console.error("Error updating API key:", error)
       toast({
