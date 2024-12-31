@@ -40,7 +40,7 @@ export const fetchYouTubeVideos = async (channelId: string, maxResults = 10) => 
       .from('app_secrets')
       .select('*')
       .eq('key_name', 'YOUTUBE_API_KEY')
-      .single();
+      .maybeSingle();  // Changed from .single() to .maybeSingle()
 
     if (secretError) {
       console.error('Error fetching API key:', secretError);
