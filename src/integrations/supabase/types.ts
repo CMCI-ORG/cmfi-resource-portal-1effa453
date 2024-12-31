@@ -75,6 +75,8 @@ export type Database = {
       content_sources: {
         Row: {
           created_at: string
+          display_summary: boolean | null
+          feed_url: string | null
           id: string
           last_synced_at: string | null
           location: string | null
@@ -86,6 +88,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          display_summary?: boolean | null
+          feed_url?: string | null
           id?: string
           last_synced_at?: string | null
           location?: string | null
@@ -97,6 +101,8 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          display_summary?: boolean | null
+          feed_url?: string | null
           id?: string
           last_synced_at?: string | null
           location?: string | null
