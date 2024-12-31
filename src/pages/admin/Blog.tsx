@@ -13,10 +13,11 @@ export default function Blog() {
   const navigate = useNavigate()
   const [isLoading, setIsLoading] = useState(true)
 
-  // Fetch latest blog posts
-  const { data: latestPosts, isLoading: isLoadingPosts } = useQuery({
+  // Fetch latest blog posts with debugging
+  const { data: latestPosts, isLoading: isLoadingPosts, error } = useQuery({
     queryKey: ['latest-blog-posts'],
     queryFn: async () => {
+      console.log('Fetching latest blog posts...')
       const { data, error } = await supabase
         .from('content')
         .select('*')
@@ -24,9 +25,16 @@ export default function Blog() {
         .order('published_at', { ascending: false })
         .limit(3)
 
-      if (error) throw error
+      if (error) {
+        console.error('Error fetching blog posts:', error)
+        throw error
+      }
+      
+      console.log('Fetched blog posts:', data)
       return data
-    }
+    },
+    // Ensure the query runs after authentication check
+    enabled: !isLoading
   })
 
   useEffect(() => {
@@ -52,6 +60,16 @@ export default function Blog() {
 
     checkAuth()
   }, [navigate])
+
+  // Debug output
+  useEffect(() => {
+    if (error) {
+      console.error('Query error:', error)
+    }
+    if (latestPosts) {
+      console.log('Latest posts in component:', latestPosts)
+    }
+  }, [latestPosts, error])
 
   if (isLoading) {
     return (
@@ -79,6 +97,10 @@ export default function Blog() {
                 {isLoadingPosts ? (
                   <div className="flex justify-center p-4">
                     <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  </div>
+                ) : error ? (
+                  <div className="text-red-500 text-center py-4">
+                    Error loading posts: {error.message}
                   </div>
                 ) : latestPosts && latestPosts.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
