@@ -41,18 +41,38 @@ export const fetchYouTubeVideos = async (channelId: string, maxResults = 10) => 
     }
 
     const apiKey = await getYouTubeApiKey();
-    
     console.log('API key retrieved successfully');
     
     // Fetch videos from YouTube
     const youtubeUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&maxResults=${maxResults}&order=date&type=video&key=${apiKey}`;
-    
     console.log('Making request to YouTube API...');
+    
     const response = await fetch(youtubeUrl);
     
     if (!response.ok) {
       const errorData = await response.json();
       console.error('YouTube API error response:', errorData);
+
+      // Handle specific YouTube API errors
+      if (errorData.error?.code === 403) {
+        if (errorData.error.message.includes('API not enabled')) {
+          throw new Error(
+            'The YouTube Data API is not enabled. Please visit the Google Cloud Console to enable it: ' +
+            'https://console.cloud.google.com/apis/library/youtube.googleapis.com'
+          );
+        }
+        if (errorData.error.message.includes('quota')) {
+          throw new Error(
+            'YouTube API quota exceeded. Please try again later or check your quota limits in the Google Cloud Console.'
+          );
+        }
+        if (errorData.error.message.includes('invalid')) {
+          throw new Error(
+            'Invalid YouTube API key. Please check your API key in the YouTube settings.'
+          );
+        }
+      }
+      
       throw new Error(errorData.error?.message || 'YouTube API request failed');
     }
 
