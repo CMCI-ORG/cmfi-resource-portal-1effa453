@@ -4,6 +4,13 @@ import { useToast } from "@/components/ui/use-toast"
 import { useNavigate } from "react-router-dom"
 import { fetchYouTubeVideos } from "@/services/youtube"
 import { YouTubeChannelItem } from "./YouTubeChannelItem"
+import {
+  Table,
+  TableBody,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 
 interface Channel {
   id: string
@@ -16,6 +23,7 @@ export function YouTubeChannelList({ onRefresh }: { onRefresh?: () => void }) {
   const [channels, setChannels] = useState<Channel[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isSyncing, setIsSyncing] = useState<string | null>(null)
+  const [editingChannel, setEditingChannel] = useState<Channel | null>(null)
   const { toast } = useToast()
   const navigate = useNavigate()
 
@@ -153,9 +161,33 @@ export function YouTubeChannelList({ onRefresh }: { onRefresh?: () => void }) {
     }
   }
 
-  function handleEdit(channel: Channel) {
-    // TODO: Implement edit functionality
-    console.log("Edit channel:", channel)
+  async function handleEdit(channel: Channel) {
+    try {
+      const { error } = await supabase
+        .from("content_sources")
+        .update({
+          name: channel.name,
+          source_id: channel.source_id,
+        })
+        .eq("id", channel.id)
+
+      if (error) throw error
+
+      toast({
+        title: "Channel updated",
+        description: "The channel information has been updated successfully.",
+      })
+
+      setEditingChannel(null)
+      fetchChannels()
+    } catch (error) {
+      console.error("Error updating channel:", error)
+      toast({
+        title: "Update failed",
+        description: "There was a problem updating the channel information.",
+        variant: "destructive",
+      })
+    }
   }
 
   if (isLoading) {
@@ -170,18 +202,31 @@ export function YouTubeChannelList({ onRefresh }: { onRefresh?: () => void }) {
           No YouTube channels added yet.
         </p>
       ) : (
-        <div className="divide-y">
-          {channels.map((channel) => (
-            <YouTubeChannelItem
-              key={channel.id}
-              channel={channel}
-              onSync={handleSync}
-              onDelete={handleDelete}
-              onEdit={handleEdit}
-              isSyncing={isSyncing === channel.id}
-            />
-          ))}
-        </div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Channel Name</TableHead>
+              <TableHead>Channel ID</TableHead>
+              <TableHead>Last Synced</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {channels.map((channel) => (
+              <YouTubeChannelItem
+                key={channel.id}
+                channel={channel}
+                onSync={handleSync}
+                onDelete={handleDelete}
+                onEdit={handleEdit}
+                isEditing={editingChannel?.id === channel.id}
+                onStartEdit={() => setEditingChannel(channel)}
+                onCancelEdit={() => setEditingChannel(null)}
+                isSyncing={isSyncing === channel.id}
+              />
+            ))}
+          </TableBody>
+        </Table>
       )}
     </div>
   )
