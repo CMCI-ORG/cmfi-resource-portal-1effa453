@@ -34,7 +34,6 @@ export function WordPressFeedParser() {
 
   const handleError = (error: unknown) => {
     console.error("Error parsing feed:", error)
-    // Log more details about the error
     if (error instanceof Error) {
       console.error("Error details:", {
         message: error.message,
@@ -85,16 +84,12 @@ export function WordPressFeedParser() {
     setStatus("Initializing feed parser...")
 
     try {
-      // First check if user is authenticated and has admin rights
       const { data: { user }, error: authError } = await supabase.auth.getUser()
       if (authError) throw new Error("Authentication error: " + authError.message)
       if (!user) throw new Error("You must be logged in to perform this action")
 
-      // Check if user is admin using the is_admin function
       const { data: isAdmin, error: adminCheckError } = await supabase
         .rpc('is_admin', { user_id: user.id })
-      
-      console.log("Admin check result:", { isAdmin, adminCheckError })
       
       if (adminCheckError) throw new Error("Failed to verify admin status: " + adminCheckError.message)
       if (!isAdmin) throw new Error("You must be an admin to manage content sources")
@@ -103,13 +98,6 @@ export function WordPressFeedParser() {
         const feed = feeds[i]
         setProgress((i + 1) * (90 / feeds.length))
         setStatus(`Processing feed ${i + 1} of ${feeds.length}...`)
-
-        console.log("Attempting to insert content source:", {
-          type: "wordpress",
-          name: new URL(feed.url).hostname,
-          source_url: feed.url,
-          feed_url: feed.url,
-        })
 
         // First, add the feed source
         const { data: sourceData, error: sourceError } = await supabase
@@ -123,11 +111,15 @@ export function WordPressFeedParser() {
             display_summary: feed.displaySummary,
           })
           .select()
-          .single()
+          .maybeSingle()
 
         if (sourceError) {
           console.error("Source insertion error:", sourceError)
           throw new Error(`Failed to add content source: ${sourceError.message}`)
+        }
+
+        if (!sourceData) {
+          throw new Error("Failed to create content source")
         }
 
         // Then fetch and parse the feed
