@@ -6,6 +6,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+const MAX_FEED_SIZE = 1000000 // 1MB limit
+const FETCH_TIMEOUT = 5000 // 5 second timeout
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -31,9 +34,9 @@ serve(async (req) => {
 
     console.log("Fetching podcast feed from:", url)
     
-    // Use a 10 second timeout for larger feeds
+    // Use AbortController for timeout
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 10000)
+    const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT)
     
     try {
       const response = await fetch(url, { 
@@ -52,12 +55,10 @@ serve(async (req) => {
       
       const xmlText = await response.text()
       
-      // Increased size limit to 2MB
-      if (xmlText.length > 2000000) {
-        throw new Error("Feed too large: Maximum size is 2MB")
+      if (xmlText.length > MAX_FEED_SIZE) {
+        throw new Error("Feed too large: Maximum size is 1MB")
       }
 
-      // Basic XML validation
       if (!xmlText.includes('<rss') && !xmlText.includes('<feed')) {
         throw new Error("Invalid feed format: Not a valid RSS/XML feed")
       }
@@ -74,14 +75,14 @@ serve(async (req) => {
         throw new Error("Invalid RSS feed format: Missing channel or items")
       }
 
-      // Process only the first 10 items to reduce memory usage
-      const items = channel.item.slice(0, 10).map((item: any) => {
+      // Process only the first 5 items to reduce memory usage
+      const items = channel.item.slice(0, 5).map((item: any) => {
         const title = item.title?.[0] || ""
         console.log("Processing item:", title)
         
         return {
           title,
-          description: item.description?.[0]?.slice(0, 2000) || "", // Increased description length limit
+          description: item.description?.[0]?.slice(0, 1000) || "", // Limit description length
           url: item.enclosure?.[0]?.["@url"] || "",
           guid: item.guid?.[0] || "",
           pubDate: new Date(item.pubDate?.[0] || "").toISOString(),
